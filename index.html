@@ -17,6 +17,8 @@
     --fizz-ground: #0d1714;
     --maze: #e2b45a;
     --maze-ground: #1b130c;
+    --drop: #ff5a36;
+    --drop-ground: #15132e;
     --display: "Bungee", "Impact", "Arial Black", sans-serif;
     --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
     color-scheme: dark;
@@ -39,6 +41,7 @@
   .card:active { transform: translateY(1px); }
   .card.fizz { background: var(--fizz-ground); --accent: var(--fizz); }
   .card.maze { background: var(--maze-ground); --accent: var(--maze); }
+  .card.drop { background: var(--drop-ground); --accent: var(--drop); }
   .card canvas { width: 96px; height: 96px; display: block; }
   .card div { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
   .card h2 { font-family: var(--display); font-size: 1.35rem; margin: 0; color: var(--accent); }
@@ -53,6 +56,16 @@
 <main>
   <h1>POCKET ARCADE</h1>
   <p class="lede">Games you play by moving your phone. Pick one.</p>
+
+  <a class="card drop" href="drop-zone.html">
+    <canvas id="iconDrop" width="192" height="192"></canvas>
+    <div>
+      <span class="chip">Tilt · Endless</span>
+      <h2>Drop Zone</h2>
+      <p>Steer a falling ball through the gaps as the floors rise. Chain drops for multipliers and unlock new balls.</p>
+      <span class="best" id="bestDrop"></span>
+    </div>
+  </a>
 
   <a class="card fizz" href="fizz-bomb.html">
     <canvas id="iconFizz" width="192" height="192"></canvas>
@@ -82,6 +95,8 @@
     const f = parseFloat(localStorage.getItem('fizzbomb-best'));
     if (f > 0) document.getElementById('bestFizz').textContent = 'Best geyser ' + f.toFixed(1) + ' m';
     const m = JSON.parse(localStorage.getItem('tiltmaze-best') || '{}'), boards = Object.keys(m).length;
+    const d = JSON.parse(localStorage.getItem('dropzone') || '{}');
+    if (d.best) document.getElementById('bestDrop').textContent = 'Best ' + d.best + ' · ' + (d.gems || 0) + ' gems';
     if (boards) document.getElementById('bestMaze').textContent = boards + ' board' + (boards > 1 ? 's' : '') + ' cleared';
   } catch (e) {}
 
@@ -101,6 +116,14 @@
   mz.fillStyle = '#0d2a19'; mz.beginPath(); mz.arc(76, 76, 7, 0, 7); mz.fill(); mz.strokeStyle = '#3fb46c'; mz.lineWidth = 2; mz.stroke();
   const bg = mz.createRadialGradient(17, 18, 1, 20, 21, 6); bg.addColorStop(0, '#fff'); bg.addColorStop(1, '#5c6368');
   mz.fillStyle = bg; mz.beginPath(); mz.arc(20, 21, 6, 0, 7); mz.fill();
+
+  const dz = document.getElementById('iconDrop').getContext('2d'); dz.scale(2, 2);
+  dz.fillStyle = '#ff5a36'; for (let x = 8; x < 88; x += 10) { dz.beginPath(); dz.moveTo(x, 8); dz.lineTo(x + 5, 15); dz.lineTo(x + 10, 8); dz.fill(); }
+  dz.fillStyle = '#4d47a8'; [[8,34,44,6],[66,34,22,6],[8,58,18,6],[42,58,46,6],[8,80,52,6],[74,80,14,6]].forEach(r => { dz.beginPath(); dz.roundRect(...r, 3); dz.fill(); });
+  dz.fillStyle = 'rgba(154,163,176,.35)'; dz.beginPath(); dz.arc(59, 40, 4, 0, 7); dz.fill();
+  const db = dz.createRadialGradient(31, 47, 1, 33, 49, 6); db.addColorStop(0, '#fff'); db.addColorStop(1, '#5f6670');
+  dz.fillStyle = db; dz.beginPath(); dz.arc(33, 49, 6, 0, 7); dz.fill();
+  dz.save(); dz.translate(80, 50); dz.rotate(Math.PI / 4); dz.fillStyle = '#3ff2c4'; dz.fillRect(-3, -3, 6, 6); dz.restore();
 </script>
 </body>
 </html>
