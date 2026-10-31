@@ -21,6 +21,8 @@
     --drop-ground: #15132e;
     --pour: #d9824a;
     --pour-ground: #14201f;
+    --ward: #d0453a;
+    --ward-ground: #0c0d0b;
     --display: "Bungee", "Impact", "Arial Black", sans-serif;
     --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
     color-scheme: dark;
@@ -43,6 +45,7 @@
   .card:active { transform: translateY(1px); }
   .card.fizz { background: var(--fizz-ground); --accent: var(--fizz); }
   .card.maze { background: var(--maze-ground); --accent: var(--maze); }
+  .card.ward { background: var(--ward-ground); --accent: var(--ward); border-color: #262922; }
   .card.pour { background: var(--pour-ground); --accent: var(--pour); }
   .card.drop { background: var(--drop-ground); --accent: var(--drop); }
   .card canvas { width: 96px; height: 96px; display: block; }
@@ -58,7 +61,17 @@
 <body>
 <main>
   <h1>POCKET ARCADE</h1>
-  <p class="lede">Games you play by moving your phone. Pick one.</p>
+  <p class="lede">Pocket-sized games for your phone. Pick one.</p>
+
+  <a class="card ward" href="ward-nine.html">
+    <canvas id="iconWard" width="192" height="192"></canvas>
+    <div>
+      <span class="chip">Survival horror · Roguelite</span>
+      <h2>Ward Nine</h2>
+      <p>Flashlight, a pistol and not enough bullets. Find the keycard, reach the elevator, go deeper. Pick an upgrade after every floor.</p>
+      <span class="best" id="bestWard"></span>
+    </div>
+  </a>
 
   <a class="card drop" href="drop-zone.html">
     <canvas id="iconDrop" width="192" height="192"></canvas>
@@ -112,6 +125,8 @@
     if (d.best) document.getElementById('bestDrop').textContent = 'Best ' + d.best + ' · ' + (d.gems || 0) + ' gems';
     const pm = JSON.parse(localStorage.getItem('pourmaster') || '{}');
     if (pm.best) document.getElementById('bestPour').textContent = 'Best ' + pm.best;
+    const wn = JSON.parse(localStorage.getItem('wardnine') || '{}');
+    if (wn.bestFloor) document.getElementById('bestWard').textContent = 'Deepest floor B' + wn.bestFloor;
     if (boards) document.getElementById('bestMaze').textContent = boards + ' board' + (boards > 1 ? 's' : '') + ' cleared';
   } catch (e) {}
 
@@ -149,6 +164,18 @@
   pc.fillStyle = 'rgba(150,210,235,.75)'; pc.fillRect(53, 74, 22, 12);
   pc.strokeStyle = 'rgba(220,240,240,.85)'; pc.lineWidth = 2; pc.beginPath(); pc.moveTo(50, 62); pc.lineTo(53, 88); pc.lineTo(75, 88); pc.lineTo(78, 62); pc.stroke();
   pc.setLineDash([3, 2]); pc.strokeStyle = '#7ee08f'; pc.beginPath(); pc.moveTo(51, 72); pc.lineTo(77, 72); pc.stroke(); pc.setLineDash([]);
+
+  const wc = document.getElementById('iconWard').getContext('2d'); wc.scale(2, 2);
+  wc.fillStyle = '#000'; wc.fillRect(4, 4, 88, 88);
+  wc.save(); wc.beginPath(); wc.moveTo(30, 62); wc.lineTo(92, 22); wc.lineTo(92, 70); wc.closePath(); wc.clip();
+  const wg = wc.createRadialGradient(30, 62, 4, 30, 62, 70); wg.addColorStop(0, '#5a5c50'); wg.addColorStop(1, '#151612');
+  wc.fillStyle = wg; wc.fillRect(0, 0, 96, 96);
+  wc.fillStyle = '#9fb58a'; wc.beginPath(); wc.arc(72, 42, 7, 0, 7); wc.fill();
+  wc.strokeStyle = '#9fb58a'; wc.lineWidth = 3; wc.lineCap = 'round'; wc.beginPath(); wc.moveTo(68, 36); wc.lineTo(58, 38); wc.moveTo(68, 48); wc.lineTo(58, 48); wc.stroke();
+  wc.restore();
+  wc.fillStyle = '#2e3a4a'; wc.beginPath(); wc.arc(30, 62, 7, 0, 7); wc.fill();
+  wc.fillStyle = '#d8b48f'; wc.beginPath(); wc.arc(31, 61, 4, 0, 7); wc.fill();
+  wc.fillStyle = '#5a1510'; wc.beginPath(); wc.arc(20, 80, 5, 0, 7); wc.fill();
 </script>
 </body>
 </html>
