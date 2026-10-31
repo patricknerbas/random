@@ -29,6 +29,8 @@
     --lyric-ground: #0c0b10;
     --gty: #e0a526;
     --gty-ground: #16302b;
+    --ol: #ff6a52;
+    --ol-ground: #1b2a4a;
     --display: "Bungee", "Impact", "Arial Black", sans-serif;
     --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
     color-scheme: dark;
@@ -52,6 +54,7 @@
   .card.fizz { background: var(--fizz-ground); --accent: var(--fizz); }
   .card.maze { background: var(--maze-ground); --accent: var(--maze); }
   .card.ward { background: var(--ward-ground); --accent: var(--ward); border-color: #262922; }
+  .card.ol { background: var(--ol-ground); --accent: var(--ol); }
   .card.gty { background: var(--gty-ground); --accent: var(--gty); }
   .card.lyric { background: var(--lyric-ground); --accent: var(--lyric); border-color: #2a2833; }
   .card.swing { background: var(--swing-ground); --accent: var(--swing); }
@@ -71,6 +74,16 @@
 <main>
   <h1>POCKET ARCADE</h1>
   <p class="lede">Pocket-sized games and toys for your phone. Pick one.</p>
+
+  <a class="card ol" href="one-line.html">
+    <canvas id="iconOl" width="192" height="192"></canvas>
+    <div>
+      <span class="chip">Daily · Shareable</span>
+      <h2>One Line</h2>
+      <p>One shape a day. It vanishes the moment you touch it. Trace it from memory in one stroke. One try.</p>
+      <span class="best" id="bestOl"></span>
+    </div>
+  </a>
 
   <a class="card gty" href="guess-the-year.html">
     <canvas id="iconGty" width="192" height="192"></canvas>
@@ -169,6 +182,8 @@
     if (sl.best) document.getElementById('bestSwing').textContent = 'Best ' + sl.best + ' m';
     const gy = JSON.parse(localStorage.getItem('gty-stats') || '{}');
     if (gy.played) document.getElementById('bestGty').textContent = 'Streak ' + gy.streak + ' · best ' + gy.best + '/500';
+    const ol = JSON.parse(localStorage.getItem('ol-stats') || '{}');
+    if (ol.played) document.getElementById('bestOl').textContent = 'Streak ' + ol.streak + ' · best ' + Number(ol.best).toFixed(1) + '%';
     if (boards) document.getElementById('bestMaze').textContent = boards + ' board' + (boards > 1 ? 's' : '') + ' cleared';
   } catch (e) {}
 
@@ -242,6 +257,15 @@
     gc.fillStyle = 'rgba(0,0,0,.5)'; gc.fillRect(8 + i * 21, 41, 18, 1);
   });
   ['#2f9e5b','#6cbf4a','#e0a526','#e57a2e','#c8402a'].forEach((c, i) => { gc.fillStyle = c; gc.beginPath(); gc.roundRect(10 + i * 16, 66, 12, 12, 2); gc.fill(); });
+
+  const oc = document.getElementById('iconOl').getContext('2d'); oc.scale(2, 2);
+  oc.fillStyle = '#fbfaf6'; oc.beginPath(); oc.roundRect(8, 8, 80, 80, 4); oc.fill();
+  oc.strokeStyle = '#e2ddd0'; oc.lineWidth = 1; for (let i = 18; i < 88; i += 10) { oc.beginPath(); oc.moveTo(i, 8); oc.lineTo(i, 88); oc.moveTo(8, i); oc.lineTo(88, i); oc.stroke(); }
+  oc.setLineDash([3, 3]); oc.strokeStyle = 'rgba(27,42,74,.4)'; oc.lineWidth = 1.5; oc.beginPath();
+  for (let i = 0; i <= 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 13 : 32; i ? oc.lineTo(48 + Math.cos(a) * r, 50 + Math.sin(a) * r) : oc.moveTo(48 + Math.cos(a) * r, 50 + Math.sin(a) * r); } oc.stroke(); oc.setLineDash([]);
+  oc.strokeStyle = '#2f9e5b'; oc.lineWidth = 3; oc.lineCap = 'round'; oc.beginPath();
+  for (let i = 0; i <= 6; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = (i % 2 ? 13 : 32) + (i % 3 - 1) * 1.5; i ? oc.lineTo(48 + Math.cos(a) * r, 50 + Math.sin(a) * r) : oc.moveTo(48 + Math.cos(a) * r, 50 + Math.sin(a) * r); } oc.stroke();
+  oc.fillStyle = '#2f9e5b'; oc.beginPath(); oc.arc(48, 18, 4, 0, 7); oc.fill();
 </script>
 </body>
 </html>
