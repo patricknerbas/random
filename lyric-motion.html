@@ -327,74 +327,88 @@
     if (pulse > .55) { ctx.fillStyle = th.text; ctx.globalAlpha = (pulse - .55) * .25; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
   }
 
-  // --- drawing one word with its entrance and the line's exit ---
+  // --- drawing one word, letter by letter: every letter has its own timing, path, spin and exit ---
   function drawWord(pw, L, t, th, wi) {
-    const W = cv.width, H = cv.height, w = pw.word;
-    const p = clamp((t - w.t) / (beat * .9));          // entrance progress
+    const W = cv.width, H = cv.height, w = pw.word, e = L.effect, ex = L.exit;
     if (t < w.t) return;
-    const q = clamp((t - L.end) / L.exitDur);          // exit progress
-    const r = rng(L.seed * 13 + wi * 7);
-    const color = w.hero ? th.accent : (wi % 5 === 3 ? th.accent2 : th.text);
     ctx.font = fontCss(pw.size); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+    const n = pw.chars.length;
+    const stagger = e === 'type' ? beat * .5 / Math.max(1, n) : beat * .07;   // gap between letters arriving
+    const dur = e === 'type' ? .01 : beat * .85;
+    const exitBase = L.end + (wi * 2) * L.exitDur * .03;
+    const split = (e === 'glitch' ? pw.size * .045 : pw.size * .028) * (1 + pulse * 2);
+    let lastShown = -1;
 
-    // word-level transform
-    let ox = 0, oy = 0, sc = 1, rot = 0, alpha = 1, visible = pw.chars.length;
-    const e = L.effect;
-    if (e === 'drop') oy = -(1 - easeOutBounce(p)) * H * .7;
-    if (e === 'pop') { sc = Math.max(0, easeOutBack(p)); rot = (1 - p) * (r() < .5 ? -.7 : .7); }
-    if (e === 'slide') ox = (1 - easeOutExpo(p)) * W * (wi % 2 ? 1.1 : -1.1);
-    if (e === 'zoom') { sc = 1 + (1 - easeOutExpo(p)) * 5; alpha = p; }
-    if (e === 'type') visible = Math.max(1, Math.ceil(p * pw.chars.length));
-    if (e === 'spin') { rot = (1 - easeOutExpo(p)) * Math.PI * 2 * (wi % 2 ? 1 : -1); sc = .3 + .7 * easeOutBack(p); }
-    if (e === 'glitch' && p < 1 && r() < .9) { ox = (Math.random() - .5) * pw.size * .5 * (1 - p); oy = (Math.random() - .5) * pw.size * .2 * (1 - p); }
+    for (let i = 0; i < n; i++) {
+      const c = pw.chars[i];
+      if (!c.ch.trim()) continue;
+      const cr = rng(L.seed * 131 + wi * 17 + i * 7);
+      const r1 = cr(), r2 = cr(), r3 = cr(), r4 = cr(), r5 = cr();
+      const start = w.t + i * stagger;
+      if (t < start) continue;
+      lastShown = i;
+      const p = clamp((t - start) / dur);
+      const q = clamp((t - (exitBase + i * L.exitDur * .05)) / (L.exitDur * .7));
+      const side = r1 < .5 ? -1 : 1;
 
-    // the line's exit
-    const ex = L.exit;
-    if (q > 0) {
-      if (ex === 'up') { oy -= easeInCubic(q) * H * .6; alpha *= 1 - q; }
-      if (ex === 'shrink') { sc *= 1 - easeInCubic(q); }
-      if (ex === 'smash') { sc *= 1 + easeInCubic(q) * 3; alpha *= 1 - q; }
-    }
-    // the hero word throbs on the beat
-    if (w.hero && p >= 1) sc *= 1 + pulse * .08;
+      let dx = 0, dy = 0, rot = 0, sc = 1, a = 1, ghost = 0;
+      // entrance, unique per letter
+      if (e === 'drop') { dy = -(1 - easeOutBounce(p)) * H * (.45 + r2 * .45); rot = (1 - p) * (r3 - .5) * 1.4; }
+      if (e === 'pop') { sc = Math.max(0, easeOutBack(p)); rot = (1 - p) * (r3 - .5) * 2.4; dy = (1 - p) * pw.size * (r2 - .5); }
+      if (e === 'slide') { const k = 1 - easeOutExpo(p); dx = k * W * side * (.5 + r2 * .7); dy = k * (r3 - .5) * H * .35; rot = k * side * .8; ghost = k; }
+      if (e === 'zoom') { sc = 1 + (1 - easeOutExpo(p)) * (3 + r2 * 5); a = p; rot = (1 - p) * (r3 - .5); }
+      if (e === 'spin') { rot = (1 - easeOutExpo(p)) * Math.PI * 2 * side * (1 + Math.floor(r2 * 2)); sc = Math.max(0, easeOutBack(p)); dy = (1 - p) * pw.size * .8 * (r3 - .5); }
+      if (e === 'glitch' && p < 1) { dx = (Math.random() - .5) * pw.size * .8 * (1 - p); dy = (Math.random() - .5) * pw.size * .4 * (1 - p); if (Math.random() < .25) a = .25; }
+      if (e === 'wave') { const k = easeOutExpo(p); dy = -(1 - k) * pw.size * 1.4; a = k; }
 
-    const cx = pw.x + pw.width / 2, cy = pw.y - pw.size * .35;
-    ctx.save();
-    ctx.translate(cx + ox, cy + oy); ctx.rotate(rot); ctx.scale(sc, sc); ctx.translate(-cx, -cy);
-    ctx.globalAlpha = clamp(alpha);
+      // lettering: once landed, each letter keeps its own tilt, size and baseline, and keeps breathing
+      const land = easeOutExpo(p);
+      const jitter = w.hero ? 1 : .35;
+      sc *= 1 + (r4 - .5) * .22 * jitter;
+      rot += ((r5 - .5) * .22 * jitter + Math.sin(t * (1.8 + r2 * 1.6) + r3 * 6) * .05) * land;
+      dy += ((r1 - .5) * pw.size * .1 * jitter + Math.sin(t * (2.4 + r4 * 2) + r5 * 6) * pw.size * .03) * land;
+      if (e === 'wave') dy += Math.sin(t * 7 + i * .7) * pw.size * .09 * land;
+      // each letter hops on the beat, a hair after its neighbour
+      const hop = Math.exp(-(((t - offset) % beat + beat) % beat - i * .015) * 9);
+      if (t > offset && hop < 1.2) dy -= hop * pw.size * (w.hero ? .14 : .05) * land;
 
-    const drawChars = (fill, dx = 0, dy = 0) => {
-      for (let i = 0; i < visible; i++) {
-        const c = pw.chars[i];
-        let cdx = dx, cdy = dy, crot = 0, ca = 1;
-        if (e === 'wave') { const intro = easeOutExpo(clamp(p * 1.4 - i * .05)); cdy += Math.sin(t * 7 + i * .7) * pw.size * .08 - (1 - intro) * pw.size; ca = intro; }
-        if (ex === 'scatter' && q > 0) {
-          const cr = rng(L.seed + wi * 31 + i * 3);
-          cdx += (cr() - .5) * W * 1.2 * easeInCubic(q); cdy += (cr() - .5) * H * 1.2 * easeInCubic(q); crot = (cr() - .5) * 6 * q;
-          ca = 1 - q;
-        }
-        ctx.save(); ctx.globalAlpha *= ca;
-        ctx.translate(c.x + c.w / 2 + cdx, pw.y + cdy); ctx.rotate(crot);
-        ctx.fillStyle = fill; ctx.fillText(c.ch, -c.w / 2, 0);
-        ctx.restore();
+      // exit, also per letter
+      if (q > 0) {
+        const k = easeInCubic(q);
+        if (ex === 'scatter') { dx += (r2 - .5) * W * 1.3 * k; dy += (r3 - .5) * H * 1.3 * k; rot += (r4 - .5) * 8 * q; a *= 1 - q; }
+        if (ex === 'up') { dy -= k * H * (.5 + r2 * .5); rot += (r3 - .5) * 2 * q; a *= 1 - q; }
+        if (ex === 'shrink') { sc *= 1 - k; rot += (r3 - .5) * 4 * q; }
+        if (ex === 'smash') { sc *= 1 + k * (2 + r2 * 4); dx += (c.x + c.w / 2 - W / 2) * k * 1.5; a *= 1 - q; }
       }
-    };
+      if (a <= .01 || sc <= .01) continue;
 
-    // slide motion trail
-    if (e === 'slide' && p < 1) { ctx.globalAlpha = .25 * alpha; drawChars(color, -(1 - p) * W * .15 * (wi % 2 ? 1 : -1)); ctx.globalAlpha = clamp(alpha); }
-    // glitch / loud: chromatic split
-    if (e === 'glitch' || w.loud) {
-      const split = (e === 'glitch' ? pw.size * .04 : pw.size * .025) * (1 + pulse * 2);
-      ctx.globalCompositeOperation = th.bg[0] === '#f1ebe0' ? 'multiply' : 'lighter';
-      drawChars('rgba(255,0,80,.75)', -split, 0); drawChars('rgba(0,220,255,.75)', split, 0);
-      ctx.globalCompositeOperation = 'source-over';
+      // colour per letter: hero words alternate accents, everything else mostly ink
+      let color = th.text;
+      if (w.hero) color = i % 3 === 1 ? th.accent2 : th.accent;
+      else if (wi % 5 === 3) color = th.accent2;
+
+      const px = c.x + c.w / 2, py = pw.y - pw.size * .35;
+      const paint = (fill, ox = 0, oy = 0, alpha = 1) => {
+        ctx.save(); ctx.globalAlpha = clamp(a * alpha);
+        ctx.translate(px + dx + ox, py + dy + oy); ctx.rotate(rot + L.tilt * 0); ctx.scale(sc, sc);
+        ctx.fillStyle = fill; ctx.fillText(c.ch, -c.w / 2, pw.size * .35);
+        ctx.restore();
+      };
+      if (ghost > .02) { paint(color, -dx * .25, -dy * .25, .3 * ghost); paint(color, -dx * .5, -dy * .5, .15 * ghost); }
+      if (e === 'glitch' || w.loud) {
+        ctx.globalCompositeOperation = th.bg[0] === '#f1ebe0' ? 'multiply' : 'lighter';
+        paint('rgba(255,0,80,.75)', -split, 0); paint('rgba(0,220,255,.75)', split, 0);
+        ctx.globalCompositeOperation = 'source-over';
+      }
+      if (w.hero) paint(i % 3 === 1 ? th.accent : th.accent2, pw.size * .05, pw.size * .05);
+      paint(color);
     }
-    // hero words get a hard offset shadow
-    if (w.hero) drawChars(th.accent2, pw.size * .05, pw.size * .05);
-    drawChars(color);
-    // typewriter cursor
-    if (e === 'type' && p < 1) { const c = pw.chars[visible - 1]; ctx.fillStyle = th.accent; ctx.fillRect(c.x + c.w + 4, pw.y - pw.size * .75, pw.size * .08, pw.size * .8); }
-    ctx.restore();
+
+    // typewriter cursor rides just after the newest letter
+    if (e === 'type' && lastShown >= 0 && lastShown < n - 1 + (t - w.t < beat ? 1 : 0)) {
+      const c = pw.chars[lastShown]; ctx.fillStyle = th.accent;
+      if (Math.floor(t * 4) % 2 === 0) ctx.fillRect(c.x + c.w + 4, pw.y - pw.size * .75, pw.size * .08, pw.size * .8);
+    }
   }
 
   function render(t) {
