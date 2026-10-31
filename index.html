@@ -23,6 +23,8 @@
     --pour-ground: #14201f;
     --ward: #d0453a;
     --ward-ground: #0c0d0b;
+    --swing: #ffd166;
+    --swing-ground: #1a1233;
     --display: "Bungee", "Impact", "Arial Black", sans-serif;
     --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
     color-scheme: dark;
@@ -46,6 +48,7 @@
   .card.fizz { background: var(--fizz-ground); --accent: var(--fizz); }
   .card.maze { background: var(--maze-ground); --accent: var(--maze); }
   .card.ward { background: var(--ward-ground); --accent: var(--ward); border-color: #262922; }
+  .card.swing { background: var(--swing-ground); --accent: var(--swing); }
   .card.pour { background: var(--pour-ground); --accent: var(--pour); }
   .card.drop { background: var(--drop-ground); --accent: var(--drop); }
   .card canvas { width: 96px; height: 96px; display: block; }
@@ -70,6 +73,16 @@
       <h2>Ward Nine</h2>
       <p>Flashlight, a pistol and not enough bullets. Find the keycard, reach the elevator, go deeper. Pick an upgrade after every floor.</p>
       <span class="best" id="bestWard"></span>
+    </div>
+  </a>
+
+  <a class="card swing" href="swing-line.html">
+    <canvas id="iconSwing" width="192" height="192"></canvas>
+    <div>
+      <span class="chip">One touch · Endless</span>
+      <h2>Swing Line</h2>
+      <p>Hold to hook, let go to fly across a night city. Perfect releases chain into speed boosts.</p>
+      <span class="best" id="bestSwing"></span>
     </div>
   </a>
 
@@ -127,6 +140,8 @@
     if (pm.best) document.getElementById('bestPour').textContent = 'Best ' + pm.best;
     const wn = JSON.parse(localStorage.getItem('wardnine') || '{}');
     if (wn.bestFloor) document.getElementById('bestWard').textContent = 'Deepest floor B' + wn.bestFloor;
+    const sl = JSON.parse(localStorage.getItem('swingline') || '{}');
+    if (sl.best) document.getElementById('bestSwing').textContent = 'Best ' + sl.best + ' m';
     if (boards) document.getElementById('bestMaze').textContent = boards + ' board' + (boards > 1 ? 's' : '') + ' cleared';
   } catch (e) {}
 
@@ -176,6 +191,14 @@
   wc.fillStyle = '#2e3a4a'; wc.beginPath(); wc.arc(30, 62, 7, 0, 7); wc.fill();
   wc.fillStyle = '#d8b48f'; wc.beginPath(); wc.arc(31, 61, 4, 0, 7); wc.fill();
   wc.fillStyle = '#5a1510'; wc.beginPath(); wc.arc(20, 80, 5, 0, 7); wc.fill();
+
+  const sc = document.getElementById('iconSwing').getContext('2d'); sc.scale(2, 2);
+  sc.fillStyle = '#251a45'; [[6,50,16,40],[24,62,14,28],[40,44,18,46],[60,58,14,32],[76,48,14,42]].forEach(r => sc.fillRect(...r));
+  sc.strokeStyle = '#ffd166'; sc.lineWidth = 2; sc.beginPath(); sc.moveTo(56, 14); sc.lineTo(36, 46); sc.stroke();
+  sc.fillStyle = '#7cf5ff'; sc.beginPath(); sc.arc(56, 14, 4, 0, 7); sc.fill();
+  sc.strokeStyle = '#ff4f6d'; sc.lineWidth = 4; sc.lineCap = 'round'; sc.beginPath(); sc.moveTo(36, 46); sc.quadraticCurveTo(26, 50, 18, 44); sc.stroke();
+  sc.fillStyle = '#f4efff'; sc.beginPath(); sc.arc(36, 46, 7, 0, 7); sc.fill();
+  sc.fillStyle = '#120d24'; sc.fillRect(35, 43, 7, 3);
 </script>
 </body>
 </html>

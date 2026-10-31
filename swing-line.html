@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#120d24">
+<title>Swing Line</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+  /* Layout: a full-height night-city canvas you hold anywhere to swing; header with distance records. */
+  :root {
+    --sky: #120d24;
+    --dusk: #2a1b4a;
+    --rope: #ffd166;
+    --hook: #7cf5ff;
+    --danger: #ff4f6d;
+    --ink: #f4efff;
+    --display: "Bungee", "Impact", "Arial Black", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--sky); color: var(--ink); font-family: var(--mono);
+    overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
+    padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) max(14px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+    display: flex; flex-direction: column;
+  }
+  header { display: flex; justify-content: space-between; align-items: baseline; padding-block: 12px 8px; gap: 12px; }
+  h1 { font-family: var(--display); font-size: 1.4rem; margin: 0; color: var(--rope); white-space: nowrap; }
+  .back { color: var(--ink); text-decoration: none; margin-right: 10px; opacity: .7; }
+  .stats { display: flex; gap: 12px; font-size: .74rem; text-transform: uppercase; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+  .stats b { font-weight: 600; }
+  .stage { flex: 1; position: relative; min-height: 0; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: 10px; }
+  .msg {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; gap: 12px; padding: 24px; pointer-events: none; background: rgba(18, 13, 36, .62); border-radius: 10px;
+  }
+  .msg h2 { font-family: var(--display); font-size: clamp(2.4rem, 13vw, 4rem); margin: 0; line-height: 1; text-shadow: 0 4px 0 #000; font-variant-numeric: tabular-nums; }
+  .msg .tag { font-family: var(--display); color: var(--rope); font-size: 1rem; }
+  .msg p { margin: 0; max-width: 32ch; line-height: 1.5; font-size: .92rem; }
+  .msg .hint { font-family: var(--display); font-size: 1rem; color: var(--hook); animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .4; } }
+  @media (prefers-reduced-motion: reduce) { .msg .hint { animation: none; } }
+</style>
+</head>
+<body>
+<header>
+  <h1><a class="back" href="index.html" aria-label="Back to games">‹</a>SWING LINE</h1>
+  <div class="stats"><span>Best <b id="best">0 m</b></span><span>Stars <b id="stars">0</b></span></div>
+</header>
+<div class="stage" id="stage">
+  <canvas id="c" tabindex="0" aria-label="Game. Hold to grab a hook, release to fly."></canvas>
+  <div class="msg" id="msg">
+    <h2>SWING.</h2>
+    <p>Hold anywhere to fire your line at the nearest hook ahead. Let go to fly. Don't touch the ground or the spikes.</p>
+    <p style="opacity:.75;font-size:.8rem">Let go on the upswing for a perfect release and a speed boost. Chain them.</p>
+    <div class="hint">HOLD TO START</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const cv = $('c'), ctx = cv.getContext('2d'), msg = $('msg');
+  const PX_PER_M = 40;
+
+  let save = { best: 0, stars: 0, runs: 0 };
+  try { save = { ...save, ...JSON.parse(localStorage.getItem('swingline') || '{}') }; } catch (e) {}
+  const persist = () => { try { localStorage.setItem('swingline', JSON.stringify(save)); } catch (e) {} };
+  const hud = () => { $('best').textContent = save.best + ' m'; $('stars').textContent = save.stars; };
+  hud();
+
+  let W = 0, H = 0, DPR = 1;
+  function resize() {
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    const r = $('stage').getBoundingClientRect(); W = r.width; H = r.height;
+    cv.width = W * DPR; cv.height = H * DPR; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  addEventListener('resize', resize); resize();
+
+  // --- audio ---
+  let ac = null, sound = true;
+  function initAudio() { if (!ac) try { ac = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} if (ac && ac.state === 'suspended') ac.resume(); }
+  function tone(freq, dur, type = 'sine', vol = .2, slide = 1, delay = 0) {
+    if (!ac || !sound) return;
+    const t = ac.currentTime + delay, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t); o.frequency.exponentialRampToValueAtTime(Math.max(20, freq * slide), t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + .02);
+  }
+  const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} };
+
+  // --- world ---
+  let state = 'title', p, anchors, spikes, starsArr, particles, popups, camX, nextX, hook, holding = false;
+  let dist = 0, runStars = 0, chain = 0, time = 0, deadT = 0, milestone = 100, newBest = false, shake = 0;
+  const G = () => H * 2.1;                 // gravity in px/s², tuned to stage height
+  const ceilingY = () => H * 0.06, groundY = () => H * 0.94;
+
+  function reset() {
+    p = { x: W * 0.25, y: H * 0.45, px: W * 0.25 - 4, py: H * 0.45, r: Math.max(8, H * 0.018) };
+    anchors = []; spikes = []; starsArr = []; particles = []; popups = [];
+    camX = 0; nextX = W * 0.35; hook = null; dist = 0; runStars = 0; chain = 0; milestone = 100; newBest = false;
+    while (nextX < W * 3) spawnChunk();
+    // start already swinging from the first hook so the run opens with motion
+    hook = { a: anchors[0], len: Math.hypot(anchors[0].x - p.x, anchors[0].y - p.y) };
+  }
+
+  function spawnChunk() {
+    const d = nextX / PX_PER_M;                         // metres from the start
+    const hard = Math.min(1, d / 1200);
+    const gap = H * (0.32 + Math.random() * 0.22 + hard * 0.18);
+    const ay = H * (0.12 + Math.random() * 0.22);
+    anchors.push({ x: nextX, y: ay });
+    // star arc between hooks
+    if (Math.random() < .55) {
+      const n = 3 + Math.floor(Math.random() * 3), cx = nextX + gap / 2, cy = H * (0.45 + Math.random() * .2);
+      for (let i = 0; i < n; i++) starsArr.push({ x: cx + (i - n / 2) * H * .05, y: cy - Math.sin(i / (n - 1 || 1) * Math.PI) * H * .06, got: false });
+    }
+    // spikes after the warm-up: floor columns, ceiling teeth, then floating bars
+    if (d > 60 && Math.random() < .3 + hard * .45) {
+      const kind = Math.random();
+      const x = nextX + gap * (.35 + Math.random() * .3), w = H * .05;
+      if (kind < .5) spikes.push({ x, w, top: groundY() - H * (.12 + Math.random() * (.18 + hard * .15)), bottom: groundY(), dir: -1 });
+      else if (kind < .8) spikes.push({ x, w, top: ceilingY(), bottom: ceilingY() + H * (.08 + Math.random() * .1), dir: 1 });
+      else { const y = H * (.5 + Math.random() * .2); spikes.push({ x, w: w * 2.2, top: y, bottom: y + H * .03, dir: 0, bob: Math.random() * 6 }); }
+    }
+    nextX += gap;
+  }
+
+  // the hook you'd grab: closest one ahead and above, within reach
+  function targetAnchor() {
+    let best = null, bd = 1e9;
+    for (const a of anchors) {
+      if (a.x < p.x - H * .05 || a.y > p.y) continue;
+      const d = Math.hypot(a.x - p.x, a.y - p.y);
+      if (d < H * .75 && d < bd) { bd = d; best = a; }
+    }
+    return best;
+  }
+
+  function press() {
+    initAudio();
+    if (state === 'title' || (state === 'dead' && deadT > .5)) { reset(); state = 'play'; msg.hidden = true; holding = true; tone(520, .1, 'triangle', .15, 1.5); return; }
+    if (state !== 'play') return;
+    holding = true;
+    const a = targetAnchor();
+    if (a) { hook = { a, len: Math.hypot(a.x - p.x, a.y - p.y) }; tone(900, .06, 'square', .08, .6); buzz(8); }
+  }
+  function release() {
+    holding = false;
+    if (state !== 'play' || !hook) return;
+    hook = null;
+    // velocity at release decides a perfect throw: moving forward and upward at a good angle
+    const vx = p.x - p.px, vy = p.y - p.py, ang = Math.atan2(-vy, vx) * 180 / Math.PI, sp = Math.hypot(vx, vy);
+    if (ang > 20 && ang < 70 && sp > H * .006) {
+      chain++;
+      const boost = 1 + Math.min(.25, .06 * chain);
+      p.px = p.x - vx * boost; p.py = p.y - vy * boost;
+      popups.push({ text: chain > 1 ? `PERFECT ×${chain}` : 'PERFECT', x: p.x, y: p.y - 30, life: 1, c: '#7cf5ff' });
+      tone(660 + chain * 70, .14, 'triangle', .2, 1.4); buzz(12);
+      for (let i = 0; i < 10; i++) particles.push({ x: p.x, y: p.y, vx: (Math.random() - .5) * 200, vy: (Math.random() - .5) * 200, life: .5, c: '#7cf5ff' });
+    } else chain = 0;
+  }
+  cv.addEventListener('pointerdown', e => { e.preventDefault(); cv.setPointerCapture(e.pointerId); press(); });
+  cv.addEventListener('pointerup', release); cv.addEventListener('pointercancel', release);
+  addEventListener('keydown', e => { if (e.code === 'Space' && !e.repeat) { e.preventDefault(); press(); } });
+  addEventListener('keyup', e => { if (e.code === 'Space') release(); });
+
+  function die() {
+    state = 'dead'; deadT = 0; shake = 1; hook = null; buzz([100, 50, 150]);
+    tone(300, .5, 'sawtooth', .25, .3);
+    for (let i = 0; i < 30; i++) particles.push({ x: p.x, y: p.y, vx: (Math.random() - .5) * 500, vy: (Math.random() - .8) * 500, life: 1, c: '#ffd166' });
+    const m = Math.floor(dist);
+    save.runs++; save.stars += runStars;
+    if (m > save.best) { save.best = m; newBest = true; }
+    persist(); hud();
+    setTimeout(() => {
+      msg.innerHTML = '';
+      const tag = document.createElement('div'); tag.className = 'tag'; tag.textContent = newBest ? 'NEW BEST!' : `BEST ${save.best} m`;
+      const h = document.createElement('h2'); h.textContent = m + ' m';
+      const q = document.createElement('p'); q.textContent = `+${runStars} star${runStars === 1 ? '' : 's'} · ${save.runs} runs so far`;
+      const next = Math.ceil((save.best + 1) / 100) * 100;
+      const r = document.createElement('p'); r.style.opacity = .7; r.style.fontSize = '.8rem';
+      r.textContent = newBest ? `Next milestone: ${next} m.` : `${save.best - m} m short of your best.`;
+      const hint = document.createElement('div'); hint.className = 'hint'; hint.textContent = 'TAP TO GO AGAIN';
+      msg.append(tag, h, q, r, hint); msg.hidden = false;
+    }, 500);
+  }
+
+  // --- simulation (verlet with a rope constraint) ---
+  function update(dt) {
+    time += dt;
+    const vx = (p.x - p.px), vy = (p.y - p.py);
+    p.px = p.x; p.py = p.y;
+    p.x += vx * .999; p.y += vy * .999 + G() * dt * dt;
+    if (hook) {
+      // reel in a touch while holding: that's what builds speed, like pumping a swing
+      hook.len = Math.max(H * .12, hook.len - H * .08 * dt);
+      const dx = p.x - hook.a.x, dy = p.y - hook.a.y, d = Math.hypot(dx, dy);
+      if (d > hook.len) { p.x = hook.a.x + dx / d * hook.len; p.y = hook.a.y + dy / d * hook.len; }
+    }
+    // ceiling bonk
+    if (p.y - p.r < ceilingY()) { p.y = ceilingY() + p.r; p.py = p.y + Math.abs(vy) * .3; }
+    if (p.y + p.r > groundY()) return die();
+
+    for (const s of spikes) {
+      let top = s.top, bottom = s.bottom;
+      if (s.dir === 0) { const o = Math.sin(time * 2 + s.bob) * H * .05; top += o; bottom += o; }
+      const cx = Math.max(s.x - s.w / 2, Math.min(p.x, s.x + s.w / 2)), cy = Math.max(top, Math.min(p.y, bottom));
+      if (Math.hypot(p.x - cx, p.y - cy) < p.r * .85) return die();
+    }
+    for (const st of starsArr) {
+      if (!st.got && Math.hypot(st.x - p.x, st.y - p.y) < p.r + H * .025) {
+        st.got = true; runStars++; tone(1200 + (runStars % 5) * 120, .08, 'sine', .15);
+        particles.push({ x: st.x, y: st.y, vx: 0, vy: -60, life: .4, c: '#ffd166' });
+      }
+    }
+
+    dist = Math.max(dist, (p.x - W * .25) / PX_PER_M);
+    if (dist >= milestone) {
+      popups.push({ text: `${milestone} m`, x: p.x, y: H * .3, life: 1.5, c: '#ffd166', big: true });
+      tone(523, .15, 'triangle', .2); tone(784, .25, 'triangle', .2, 1, .12); buzz([20, 40, 20]);
+      milestone += 100;
+    }
+    // camera leads the player a little
+    camX += (p.x - W * .3 - camX) * Math.min(1, dt * 6);
+    while (nextX < camX + W * 2.5) spawnChunk();
+    anchors = anchors.filter(a => a.x > camX - W);
+    spikes = spikes.filter(s => s.x > camX - W);
+    starsArr = starsArr.filter(s => s.x > camX - W);
+  }
+
+  // --- render ---
+  const skyline = [];
+  for (let i = 0; i < 60; i++) skyline.push({ w: 30 + Math.random() * 60, h: .2 + Math.random() * .45, lit: Math.random() });
+  function drawCity(par, color, scale) {
+    ctx.fillStyle = color;
+    let x = -((camX * par) % 2400);
+    for (let k = 0; x < W; k++) {
+      const b = skyline[k % skyline.length], bh = H * b.h * scale;
+      ctx.fillRect(x, groundY() - bh, b.w, bh);
+      if (par > .3) { ctx.fillStyle = 'rgba(255,209,102,.35)'; for (let wy = groundY() - bh + 8; wy < groundY() - 6; wy += 12) for (let wx = x + 5; wx < x + b.w - 6; wx += 10) if ((wx * 7 + wy * 13 + k) % 5 < b.lit * 2) ctx.fillRect(wx, wy, 3, 4); ctx.fillStyle = color; }
+      x += b.w + 6;
+    }
+  }
+
+  function draw() {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const g = ctx.createLinearGradient(0, 0, 0, H); g.addColorStop(0, '#120d24'); g.addColorStop(1, '#3b2259');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = 'rgba(255,240,220,.85)'; ctx.beginPath(); ctx.arc(W * .8, H * .18, H * .05, 0, 6.3); ctx.fill();
+    drawCity(.15, '#1d1538', 1.1); drawCity(.4, '#251a45', .8);
+    ctx.fillStyle = '#0b0818'; ctx.fillRect(0, groundY(), W, H - groundY());
+    ctx.fillStyle = '#ff4f6d'; ctx.globalAlpha = .5 + Math.sin(time * 4) * .2; ctx.fillRect(0, groundY(), W, 2); ctx.globalAlpha = 1;
+    ctx.fillStyle = '#0b0818'; ctx.fillRect(0, 0, W, ceilingY());
+    if (!p) return;
+
+    const sx = (Math.random() - .5) * 12 * shake;
+    ctx.translate(-camX + sx, 0);
+
+    const target = state === 'play' && !hook ? targetAnchor() : null;
+    for (const a of anchors) {
+      ctx.strokeStyle = 'rgba(124,245,255,.25)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(a.x, ceilingY()); ctx.lineTo(a.x, a.y); ctx.stroke();
+      ctx.fillStyle = a === target ? '#ffffff' : '#7cf5ff';
+      ctx.shadowColor = '#7cf5ff'; ctx.shadowBlur = a === target ? 18 : 8;
+      ctx.beginPath(); ctx.arc(a.x, a.y, H * .012, 0, 6.3); ctx.fill(); ctx.shadowBlur = 0;
+      if (a === target) { ctx.strokeStyle = 'rgba(255,255,255,.5)'; ctx.beginPath(); ctx.arc(a.x, a.y, H * .025 + Math.sin(time * 8) * 2, 0, 6.3); ctx.stroke(); }
+    }
+    for (const st of starsArr) if (!st.got) {
+      const r = H * .014; ctx.fillStyle = '#ffd166'; ctx.beginPath();
+      for (let i = 0; i < 10; i++) { const a = i * Math.PI / 5 - Math.PI / 2 + time, rr = i % 2 ? r * .45 : r; ctx.lineTo(st.x + Math.cos(a) * rr, st.y + Math.sin(a) * rr); }
+      ctx.fill();
+    }
+    for (const s of spikes) {
+      let top = s.top, bottom = s.bottom;
+      if (s.dir === 0) { const o = Math.sin(time * 2 + s.bob) * H * .05; top += o; bottom += o; }
+      ctx.fillStyle = '#ff4f6d'; ctx.fillRect(s.x - s.w / 2, top, s.w, bottom - top);
+      ctx.fillStyle = '#ffb3c0';
+      const teeth = Math.max(2, Math.floor(s.w / 8));
+      for (let i = 0; i < teeth; i++) {
+        const x = s.x - s.w / 2 + i * s.w / teeth, tw = s.w / teeth;
+        if (s.dir <= 0) { ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x + tw / 2, top - 8); ctx.lineTo(x + tw, top); ctx.fill(); }
+        if (s.dir >= 0) { ctx.beginPath(); ctx.moveTo(x, bottom); ctx.lineTo(x + tw / 2, bottom + 8); ctx.lineTo(x + tw, bottom); ctx.fill(); }
+      }
+    }
+
+    if (hook) { ctx.strokeStyle = '#ffd166'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.moveTo(hook.a.x, hook.a.y); ctx.lineTo(p.x, p.y); ctx.stroke(); }
+    if (state !== 'dead') {
+      // the swinger: a round courier with a streaming scarf
+      const vx = p.x - p.px, vy = p.y - p.py;
+      ctx.strokeStyle = '#ff4f6d'; ctx.lineWidth = p.r * .5; ctx.lineCap = 'round';
+      ctx.beginPath(); ctx.moveTo(p.x, p.y - p.r * .2);
+      ctx.quadraticCurveTo(p.x - vx * 3, p.y - vy * 3 + Math.sin(time * 20) * 3, p.x - vx * 6, p.y - vy * 6); ctx.stroke();
+      ctx.fillStyle = '#f4efff'; ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.3); ctx.fill();
+      ctx.fillStyle = '#120d24'; ctx.fillRect(p.x - p.r * .1, p.y - p.r * .45, p.r * .9, p.r * .35); // visor
+      ctx.fillStyle = '#7cf5ff'; ctx.fillRect(p.x + p.r * .2, p.y - p.r * .4, p.r * .5, p.r * .2);
+    }
+    for (const q of particles) { ctx.globalAlpha = Math.max(0, q.life * 2); ctx.fillStyle = q.c; ctx.fillRect(q.x - 2, q.y - 2, 4, 4); }
+    ctx.globalAlpha = 1;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const q of popups) { ctx.globalAlpha = Math.min(1, q.life); ctx.fillStyle = q.c; ctx.font = `${q.big ? 30 : 15}px Bungee, Impact, sans-serif`; ctx.fillText(q.text, q.x, q.y); }
+    ctx.globalAlpha = 1;
+
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    if (state === 'play') {
+      ctx.fillStyle = '#f4efff'; ctx.font = '30px Bungee, Impact, sans-serif'; ctx.textAlign = 'left'; ctx.fillText(Math.floor(dist) + ' m', 14, ceilingY() + 30);
+      if (save.best > 0) { // ghost marker of your best
+        const bx = W * .25 + save.best * PX_PER_M - camX;
+        if (bx > 0 && bx < W) { ctx.strokeStyle = 'rgba(255,209,102,.6)'; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.moveTo(bx, ceilingY()); ctx.lineTo(bx, groundY()); ctx.stroke(); ctx.setLineDash([]); ctx.fillStyle = '#ffd166'; ctx.font = '11px "IBM Plex Mono", monospace'; ctx.textAlign = 'center'; ctx.fillText('BEST', bx, ceilingY() + 50); }
+      }
+      if (chain > 1) { ctx.fillStyle = '#7cf5ff'; ctx.font = '14px Bungee, Impact, sans-serif'; ctx.textAlign = 'left'; ctx.fillText('×' + chain + ' CHAIN', 14, ceilingY() + 58); }
+    }
+  }
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(.033, (now - last) / 1000); last = now;
+    if (state === 'play') update(dt); else if (state === 'dead') deadT += dt;
+    else if (state === 'title' && p) { // idle swing behind the title card
+      time += dt; const vx = p.x - p.px, vy = p.y - p.py; p.px = p.x; p.py = p.y; p.x += vx; p.y += vy + G() * dt * dt;
+      const dx = p.x - hook.a.x, dy = p.y - hook.a.y, d = Math.hypot(dx, dy); if (d > hook.len) { p.x = hook.a.x + dx / d * hook.len; p.y = hook.a.y + dy / d * hook.len; }
+    }
+    for (const q of particles) { q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 600 * dt; q.life -= dt; }
+    particles = particles ? particles.filter(q => q.life > 0) : [];
+    for (const q of popups) { q.y -= 30 * dt; q.life -= dt; }
+    popups = popups ? popups.filter(q => q.life > 0) : [];
+    shake *= Math.pow(.03, dt);
+    draw();
+    requestAnimationFrame(frame);
+  }
+  reset(); p.px = p.x - 6;
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
