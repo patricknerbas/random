@@ -27,6 +27,8 @@
     --swing-ground: #1a1233;
     --lyric: #ff3d7f;
     --lyric-ground: #0c0b10;
+    --gty: #e0a526;
+    --gty-ground: #16302b;
     --display: "Bungee", "Impact", "Arial Black", sans-serif;
     --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
     color-scheme: dark;
@@ -50,6 +52,7 @@
   .card.fizz { background: var(--fizz-ground); --accent: var(--fizz); }
   .card.maze { background: var(--maze-ground); --accent: var(--maze); }
   .card.ward { background: var(--ward-ground); --accent: var(--ward); border-color: #262922; }
+  .card.gty { background: var(--gty-ground); --accent: var(--gty); }
   .card.lyric { background: var(--lyric-ground); --accent: var(--lyric); border-color: #2a2833; }
   .card.swing { background: var(--swing-ground); --accent: var(--swing); }
   .card.pour { background: var(--pour-ground); --accent: var(--pour); }
@@ -68,6 +71,16 @@
 <main>
   <h1>POCKET ARCADE</h1>
   <p class="lede">Pocket-sized games and toys for your phone. Pick one.</p>
+
+  <a class="card gty" href="guess-the-year.html">
+    <canvas id="iconGty" width="192" height="192"></canvas>
+    <div>
+      <span class="chip">Daily · Shareable</span>
+      <h2>Guess the Year</h2>
+      <p>Five mystery years a day, a few clues each. Fewer clues, more points. Share your emoji score.</p>
+      <span class="best" id="bestGty"></span>
+    </div>
+  </a>
 
   <a class="card lyric" href="lyric-motion.html">
     <canvas id="iconLyric" width="192" height="192"></canvas>
@@ -154,6 +167,8 @@
     if (wn.bestFloor) document.getElementById('bestWard').textContent = 'Deepest floor B' + wn.bestFloor;
     const sl = JSON.parse(localStorage.getItem('swingline') || '{}');
     if (sl.best) document.getElementById('bestSwing').textContent = 'Best ' + sl.best + ' m';
+    const gy = JSON.parse(localStorage.getItem('gty-stats') || '{}');
+    if (gy.played) document.getElementById('bestGty').textContent = 'Streak ' + gy.streak + ' · best ' + gy.best + '/500';
     if (boards) document.getElementById('bestMaze').textContent = boards + ' board' + (boards > 1 ? 's' : '') + ' cleared';
   } catch (e) {}
 
@@ -219,6 +234,14 @@
   lc.save(); lc.translate(48, 62); lc.rotate(-.12); lc.font = '24px Impact, sans-serif';
   lc.fillStyle = '#39e5ff'; lc.fillText('LOUD', 2, 2); lc.fillStyle = '#ff3d7f'; lc.fillText('LOUD', 0, 0); lc.restore();
   lc.font = '12px Impact, sans-serif'; lc.fillStyle = '#fff'; lc.fillText('IT UP', 48, 80);
+
+  const gc = document.getElementById('iconGty').getContext('2d'); gc.scale(2, 2);
+  ['1','9','9','7'].forEach((d, i) => {
+    gc.fillStyle = '#0b1714'; gc.beginPath(); gc.roundRect(8 + i * 21, 26, 18, 30, 3); gc.fill();
+    gc.fillStyle = '#f6efdc'; gc.font = '900 24px Impact, sans-serif'; gc.textAlign = 'center'; gc.textBaseline = 'middle'; gc.fillText(d, 17 + i * 21, 42);
+    gc.fillStyle = 'rgba(0,0,0,.5)'; gc.fillRect(8 + i * 21, 41, 18, 1);
+  });
+  ['#2f9e5b','#6cbf4a','#e0a526','#e57a2e','#c8402a'].forEach((c, i) => { gc.fillStyle = c; gc.beginPath(); gc.roundRect(10 + i * 16, 66, 12, 12, 2); gc.fill(); });
 </script>
 </body>
 </html>
