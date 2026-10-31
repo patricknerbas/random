@@ -19,6 +19,8 @@
     --maze-ground: #1b130c;
     --drop: #ff5a36;
     --drop-ground: #15132e;
+    --pour: #d9824a;
+    --pour-ground: #14201f;
     --display: "Bungee", "Impact", "Arial Black", sans-serif;
     --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
     color-scheme: dark;
@@ -41,6 +43,7 @@
   .card:active { transform: translateY(1px); }
   .card.fizz { background: var(--fizz-ground); --accent: var(--fizz); }
   .card.maze { background: var(--maze-ground); --accent: var(--maze); }
+  .card.pour { background: var(--pour-ground); --accent: var(--pour); }
   .card.drop { background: var(--drop-ground); --accent: var(--drop); }
   .card canvas { width: 96px; height: 96px; display: block; }
   .card div { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -64,6 +67,16 @@
       <h2>Drop Zone</h2>
       <p>Steer a falling ball through the gaps as the floors rise. Chain drops for multipliers and unlock new balls.</p>
       <span class="best" id="bestDrop"></span>
+    </div>
+  </a>
+
+  <a class="card pour" href="pour-master.html">
+    <canvas id="iconPour" width="192" height="192"></canvas>
+    <div>
+      <span class="chip">Tilt · Endless</span>
+      <h2>Pour Master</h2>
+      <p>Tip the bottle by tilting your phone and fill each passing glass right to the line. Perfect pours stack a streak.</p>
+      <span class="best" id="bestPour"></span>
     </div>
   </a>
 
@@ -97,6 +110,8 @@
     const m = JSON.parse(localStorage.getItem('tiltmaze-best') || '{}'), boards = Object.keys(m).length;
     const d = JSON.parse(localStorage.getItem('dropzone') || '{}');
     if (d.best) document.getElementById('bestDrop').textContent = 'Best ' + d.best + ' · ' + (d.gems || 0) + ' gems';
+    const pm = JSON.parse(localStorage.getItem('pourmaster') || '{}');
+    if (pm.best) document.getElementById('bestPour').textContent = 'Best ' + pm.best;
     if (boards) document.getElementById('bestMaze').textContent = boards + ' board' + (boards > 1 ? 's' : '') + ' cleared';
   } catch (e) {}
 
@@ -124,6 +139,16 @@
   const db = dz.createRadialGradient(31, 47, 1, 33, 49, 6); db.addColorStop(0, '#fff'); db.addColorStop(1, '#5f6670');
   dz.fillStyle = db; dz.beginPath(); dz.arc(33, 49, 6, 0, 7); dz.fill();
   dz.save(); dz.translate(80, 50); dz.rotate(Math.PI / 4); dz.fillStyle = '#3ff2c4'; dz.fillRect(-3, -3, 6, 6); dz.restore();
+
+  const pc = document.getElementById('iconPour').getContext('2d'); pc.scale(2, 2);
+  pc.save(); pc.translate(34, 32); pc.rotate(1.1);
+  pc.fillStyle = 'rgba(150,210,235,.75)'; pc.fillRect(-9, -8, 18, 16);
+  pc.strokeStyle = 'rgba(220,240,240,.85)'; pc.lineWidth = 2; pc.strokeRect(-9, -14, 18, 30); pc.strokeRect(-4, -22, 8, 8);
+  pc.fillStyle = '#d9824a'; pc.fillRect(-9, 2, 18, 7); pc.restore();
+  pc.fillStyle = 'rgba(150,210,235,.9)'; for (let i = 0; i < 9; i++) { pc.beginPath(); pc.arc(56 + i * 1.2, 34 + i * 4.5, 1.6, 0, 7); pc.fill(); }
+  pc.fillStyle = 'rgba(150,210,235,.75)'; pc.fillRect(53, 74, 22, 12);
+  pc.strokeStyle = 'rgba(220,240,240,.85)'; pc.lineWidth = 2; pc.beginPath(); pc.moveTo(50, 62); pc.lineTo(53, 88); pc.lineTo(75, 88); pc.lineTo(78, 62); pc.stroke();
+  pc.setLineDash([3, 2]); pc.strokeStyle = '#7ee08f'; pc.beginPath(); pc.moveTo(51, 72); pc.lineTo(77, 72); pc.stroke(); pc.setLineDash([]);
 </script>
 </body>
 </html>

@@ -3,6 +3,7 @@
 Phone games you play by moving the phone. Open `index.html` to pick a game.
 
 - **Drop Zone** (`drop-zone.html`): endless. Tilt to steer a falling ball through the gaps as the floors rise; chain drops for multipliers and collect gems to unlock balls.
+- **Pour Master** (`pour-master.html`): endless. Tilt to tip a bottle and fill each glass on the conveyor to its line; perfect pours build a streak.
 - **Fizz Bomb** (`fizz-bomb.html`): shake to build pressure in a soda bottle, then pop the cap for the tallest geyser before it bursts.
 - **Tilt Maze** (`tilt-maze.html`): tilt a wooden labyrinth to roll a steel ball past the holes into the goal.
 

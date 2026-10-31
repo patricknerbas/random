@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#14201f">
+<title>Pour Master</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+  /* Layout: score strip, a bar counter scene (bottle above, conveyor of glasses below), action button. */
+  :root {
+    --night: #14201f;
+    --tile: #1d2e2c;
+    --steel: #8fa3a0;
+    --copper: #d9824a;
+    --ink: #f3f0e6;
+    --good: #7ee08f;
+    --bad: #ff5d4a;
+    --display: "Bungee", "Impact", "Arial Black", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--night); color: var(--ink); font-family: var(--mono);
+    overflow: hidden; touch-action: none; user-select: none; -webkit-user-select: none;
+    padding: env(safe-area-inset-top, 0px) max(16px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(16px, env(safe-area-inset-left, 0px));
+    display: flex; flex-direction: column;
+  }
+  header { display: flex; justify-content: space-between; align-items: baseline; padding-block: 12px 8px; gap: 12px; }
+  h1 { font-family: var(--display); font-size: 1.4rem; margin: 0; color: var(--copper); white-space: nowrap; }
+  .back { color: var(--ink); text-decoration: none; margin-right: 10px; opacity: .7; }
+  .stats { display: flex; gap: 12px; font-size: .74rem; text-transform: uppercase; letter-spacing: .08em; font-variant-numeric: tabular-nums; }
+  .stats b { font-weight: 600; }
+  .stage { flex: 1; position: relative; min-height: 0; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; border-radius: 10px; }
+  .msg {
+    position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; gap: 12px; padding: 24px; pointer-events: none; background: rgba(20, 32, 31, .75); border-radius: 10px;
+  }
+  .msg h2 { font-family: var(--display); font-size: clamp(2.4rem, 13vw, 4rem); margin: 0; line-height: 1; text-shadow: 0 4px 0 #000; font-variant-numeric: tabular-nums; }
+  .msg .tag { font-family: var(--display); color: var(--copper); font-size: 1rem; }
+  .msg p { margin: 0; max-width: 32ch; line-height: 1.5; font-size: .92rem; }
+  .controls { padding-block: 10px 16px; display: flex; gap: 10px; }
+  button {
+    flex: 1; font-family: var(--display); font-size: 1.25rem; padding: 16px; border: 0; border-radius: 14px;
+    background: var(--copper); color: var(--night); box-shadow: 0 5px 0 #8a4a20; cursor: pointer;
+  }
+  button:active { transform: translateY(4px); box-shadow: 0 1px 0 #8a4a20; }
+  button:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+  button.secondary { flex: 0 0 auto; background: var(--tile); color: var(--ink); box-shadow: 0 5px 0 #0a1110; font-size: 1rem; }
+</style>
+</head>
+<body>
+<header>
+  <h1><a class="back" href="index.html" aria-label="Back to games">‹</a>POUR MASTER</h1>
+  <div class="stats"><span>Best <b id="best">0</b></span><span>Lives <b id="lives">♥♥♥</b></span></div>
+</header>
+<div class="stage" id="stage">
+  <canvas id="c"></canvas>
+  <div class="msg" id="msg">
+    <h2>POUR.</h2>
+    <p>Tilt your phone to the right to tip the bottle. Fill each glass to its line as it rides past. Overflow or leave it short and you lose a life.</p>
+    <p style="opacity:.75;font-size:.8rem">Dead-on pours chain into a multiplier. No sensor? Hold the right arrow key, or press on the screen and slide right.</p>
+  </div>
+</div>
+<div class="controls">
+  <button id="btn">START POURING</button>
+  <button id="mute" class="secondary" aria-label="Toggle sound">🔊</button>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const cv = $('c'), ctx = cv.getContext('2d');
+  const btn = $('btn'), msg = $('msg');
+
+  // drinks change as the shift goes on
+  const DRINKS = [
+    { name: 'Water', color: 'rgba(150,210,235,.75)', foam: null, at: 0 },
+    { name: 'Orange juice', color: 'rgba(255,165,40,.9)', foam: null, at: 15 },
+    { name: 'Cola', color: 'rgba(70,30,15,.95)', foam: 'rgba(210,180,150,.9)', at: 40 },
+    { name: 'Lager', color: 'rgba(240,180,40,.9)', foam: 'rgba(255,250,235,.95)', at: 80 },
+    { name: 'Red wine', color: 'rgba(120,10,40,.92)', foam: null, at: 130 },
+    { name: 'Neon tonic', color: 'rgba(80,255,190,.85)', foam: 'rgba(220,255,240,.9)', at: 200 },
+  ];
+  const GLASSES = [ // w, h in "units" (scaled by W), capacity ml
+    { name: 'tumbler', w: .2, h: .2, taper: .08, ml: 250 },
+    { name: 'highball', w: .15, h: .3, taper: .03, ml: 300 },
+    { name: 'pint', w: .2, h: .3, taper: .14, ml: 470 },
+    { name: 'shot', w: .1, h: .12, taper: .1, ml: 45 },
+    { name: 'wine', w: .2, h: .16, taper: -.12, ml: 200 },
+  ];
+
+  let save = { best: 0 };
+  try { save = { ...save, ...JSON.parse(localStorage.getItem('pourmaster') || '{}') }; } catch (e) {}
+  $('best').textContent = save.best;
+
+  // --- canvas ---
+  let W = 0, H = 0, DPR = 1;
+  function resize() {
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    const r = $('stage').getBoundingClientRect(); W = r.width; H = r.height;
+    cv.width = W * DPR; cv.height = H * DPR; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  }
+  addEventListener('resize', resize); resize();
+
+  // --- input: bottle angle (0 = upright, 135° = upside down to the right) ---
+  let sensor = null, base = null, keyHeld = false, drag = null, angle = 0, target = 0;
+  function onOrient(e) {
+    if (e.gamma == null) return;
+    const o = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+    let g = e.gamma; if (o === 90) g = e.beta; else if (o === -90 || o === 270) g = -e.beta;
+    sensor = g; if (base == null) base = sensor;
+  }
+  async function enableSensor() {
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+      try { if (await DeviceOrientationEvent.requestPermission() !== 'granted') return; } catch (e) { return; }
+    }
+    addEventListener('deviceorientation', onOrient);
+  }
+  cv.addEventListener('pointerdown', e => { drag = { x0: e.clientX, x: e.clientX }; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', e => { if (drag) drag.x = e.clientX; });
+  cv.addEventListener('pointerup', () => drag = null); cv.addEventListener('pointercancel', () => drag = null);
+  addEventListener('keydown', e => { if (e.key === 'ArrowRight') keyHeld = true; if (e.code === 'Space' && state !== 'playing') { e.preventDefault(); btn.click(); } });
+  addEventListener('keyup', e => { if (e.key === 'ArrowRight') keyHeld = false; });
+  function readAngle(dt) {
+    let a = 0;
+    if (sensor != null && base != null) a = (sensor - base) * 1.5;  // a 60° wrist turn gets you to 90° of bottle
+    if (drag) a = (drag.x - drag.x0) / (W * 0.6) * 130;
+    if (keyHeld) target = Math.min(130, target + 160 * dt); else target = Math.max(0, target - 260 * dt);
+    a = Math.max(a, target);
+    a = Math.max(0, Math.min(135, a));
+    angle += (a - angle) * Math.min(1, dt * 14);
+  }
+
+  // --- audio ---
+  let ac = null, sound = true, pourGain = null, pourFilter = null;
+  function initAudio() {
+    if (ac) return;
+    try {
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      const len = ac.sampleRate * 2, buf = ac.createBuffer(1, len, ac.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      const src = ac.createBufferSource(); src.buffer = buf; src.loop = true;
+      pourFilter = ac.createBiquadFilter(); pourFilter.type = 'bandpass'; pourFilter.Q.value = 1.2; pourFilter.frequency.value = 600;
+      pourGain = ac.createGain(); pourGain.gain.value = 0;
+      src.connect(pourFilter).connect(pourGain).connect(ac.destination); src.start();
+    } catch (e) { ac = null; }
+  }
+  function tone(freq, dur, type = 'sine', vol = .25, slide = 1) {
+    if (!ac || !sound) return;
+    const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(freq, t); o.frequency.exponentialRampToValueAtTime(freq * slide, t + dur);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t + dur);
+    o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + .02);
+  }
+  function buzz(p) { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} }
+
+  // --- game state ---
+  let state = 'intro', score = 0, lives = 3, combo = 0, served = 0, poured = 0, perfects = 0, time = 0;
+  let glasses = [], drops = [], popups = [], splashes = [], spawnIn = 0, newBest = false;
+  const BELT_Y = () => H * 0.86;
+  const bottle = () => ({ x: W * 0.36, y: H * 0.26, h: Math.min(H * 0.3, W * 0.55), w: Math.min(H * 0.3, W * 0.55) * 0.3 });
+  const drink = () => [...DRINKS].reverse().find(d => score >= d.at);
+
+  function newShift() {
+    score = 0; lives = 3; combo = 0; served = 0; poured = 0; perfects = 0; time = 0; newBest = false;
+    glasses = []; drops = []; popups = []; splashes = []; spawnIn = 0.3;
+    base = sensor; updateLives();
+  }
+  function updateLives() { $('lives').textContent = '♥'.repeat(lives) + '♡'.repeat(Math.max(0, 3 - lives)); }
+
+  function spawnGlass() {
+    const lvl = Math.min(1, served / 40);
+    const pool = served < 3 ? GLASSES.slice(0, 2) : GLASSES;
+    const t = pool[Math.floor(Math.random() * pool.length)];
+    const scale = Math.min(W, H * 0.7);
+    const w = t.w * scale, h = t.h * scale;
+    glasses.push({ type: t, x: W + w, w, h, fill: 0, line: 0.6 + Math.random() * 0.3, tol: 0.07 - lvl * 0.03, judged: false, slosh: 0, result: null });
+  }
+
+  // glass interior: bottom is narrower (taper > 0) or wider (taper < 0) than the rim
+  function inner(g) {
+    const wall = 3, by = BELT_Y(), top = by - g.h;
+    const rim = g.w / 2 - wall, bottomHalf = rim * (1 - g.type.taper * 2);
+    return { by: by - wall * 2, top, rim, bottomHalf };
+  }
+  function halfAt(g, y) { const i = inner(g); const f = (i.by - y) / (i.by - i.top); return i.bottomHalf + (i.rim - i.bottomHalf) * f; }
+
+  function judge(g) {
+    g.judged = true; served++;
+    const diff = g.fill - g.line;
+    let pts = 0, text, color;
+    if (g.fill > 1) { text = 'OVERFLOW'; color = '#ff5d4a'; }
+    else if (Math.abs(diff) <= g.tol * 0.4) { combo++; perfects++; pts = 3 * combo; text = combo > 1 ? `PERFECT ×${combo}` : 'PERFECT'; color = '#7ee08f'; }
+    else if (Math.abs(diff) <= g.tol) { combo = 0; pts = 1; text = 'GOOD'; color = '#f3f0e6'; }
+    else { text = diff < 0 ? 'SHORT' : 'TOO MUCH'; color = '#ff5d4a'; }
+    if (!pts) { lives--; combo = 0; updateLives(); buzz([80, 40, 80]); tone(180, .35, 'sawtooth', .25, .5); }
+    else { score += pts; poured++; buzz(pts >= 3 ? [15, 30, 15] : 12); tone(pts >= 3 ? 880 + combo * 60 : 660, .18, 'triangle', .25, 1.3); }
+    g.result = color;
+    popups.push({ text: pts ? `${text}  +${pts}` : text, x: Math.max(70, g.x), y: BELT_Y() - g.h - 30, color, life: 1.4 });
+    if (lives <= 0) endShift();
+  }
+
+  function endShift() {
+    state = 'over';
+    if (score > save.best) { save.best = score; newBest = true; try { localStorage.setItem('pourmaster', JSON.stringify(save)); } catch (e) {} }
+    $('best').textContent = save.best;
+    setTimeout(() => {
+      msg.innerHTML = '';
+      const tag = document.createElement('div'); tag.className = 'tag'; tag.textContent = newBest ? 'NEW BEST!' : `BEST ${save.best}`;
+      const h = document.createElement('h2'); h.textContent = score;
+      const p = document.createElement('p'); p.textContent = `${poured} glass${poured === 1 ? '' : 'es'} served · ${perfects} perfect · last drink: ${drink().name}`;
+      const next = DRINKS.find(d => d.at > score);
+      const q = document.createElement('p'); q.style.opacity = .75; q.style.fontSize = '.8rem';
+      q.textContent = next ? `Reach ${next.at} points to start pouring ${next.name}.` : 'You poured the whole menu.';
+      msg.append(tag, h, p, q); msg.hidden = false; btn.textContent = 'NEXT SHIFT';
+    }, 900);
+  }
+
+  btn.addEventListener('click', async () => {
+    initAudio(); if (ac && ac.state === 'suspended') ac.resume();
+    if (state === 'intro') await enableSensor();
+    newShift(); msg.hidden = true; state = 'playing'; btn.textContent = 'POURING…';
+  });
+  $('mute').addEventListener('click', () => { sound = !sound; $('mute').textContent = sound ? '🔊' : '🔇'; });
+
+  // --- simulation ---
+  function spout() {
+    const b = bottle(), a = angle * Math.PI / 180;
+    // the spout sits at the top of the neck; rotate about the bottle's centre
+    const lx = 0, ly = -b.h / 2;
+    return { x: b.x + lx * Math.cos(a) - ly * Math.sin(a), y: b.y + lx * Math.sin(a) + ly * Math.cos(a), a };
+  }
+
+  function update(dt) {
+    time += dt;
+    const lvl = Math.min(1, served / 40);
+    const speed = W * (0.13 + lvl * 0.14);
+
+    spawnIn -= dt;
+    if (spawnIn <= 0) { spawnGlass(); spawnIn = (W * (0.55 - lvl * 0.15)) / speed + Math.random() * 0.6; }
+
+    // flow: nothing comes out until the liquid reaches the lip (~45°), then it ramps up like a real bottle
+    const over = Math.max(0, angle - 45) / 90;
+    const flow = Math.pow(Math.min(1, over), 1.4) * 260; // ml per second at full tip
+    const s = spout();
+    if (flow > 0) {
+      const n = Math.ceil(flow / 18);
+      const dir = s.a - Math.PI / 2; // pouring direction along the neck
+      const v = 90 + over * 160;
+      for (let i = 0; i < n; i++) drops.push({ x: s.x + (Math.random() - .5) * 3, y: s.y, vx: Math.cos(dir) * v * (0.85 + Math.random() * .3), vy: Math.sin(dir) * v, ml: flow * dt / n });
+    }
+    if (pourGain) { pourGain.gain.setTargetAtTime(sound ? Math.min(.35, flow / 600) : 0, ac.currentTime, .05); }
+
+    for (const g of glasses) {
+      g.x -= speed * dt; g.slosh *= Math.pow(.1, dt);
+      if (!g.judged && g.fill > 1) judge(g);
+      if (!g.judged && g.x < W * 0.08) judge(g);
+    }
+    glasses = glasses.filter(g => g.x > -g.w);
+
+    const by = BELT_Y();
+    for (const d of drops) {
+      d.vy += 980 * dt * (H / 700); d.x += d.vx * dt; d.y += d.vy * dt;
+      for (const g of glasses) {
+        const i = inner(g);
+        if (d.y > i.top && d.y < i.by && Math.abs(d.x - g.x) < halfAt(g, d.y)) {
+          const surface = i.by - (i.by - i.top) * Math.min(1, g.fill);
+          if (d.y >= surface - 2) {
+            d.dead = true; g.fill += d.ml / g.type.ml; g.slosh = Math.min(1, g.slosh + .05);
+            if (pourFilter) pourFilter.frequency.value = 400 + g.fill * 900; // pitch climbs as the glass fills, like the real thing
+          }
+        } else if (d.y > i.top && Math.abs(d.x - g.x) < g.w / 2 + 2 && Math.abs(d.x - g.x) > halfAt(g, d.y) - 1 && d.y < by) {
+          d.vx *= -.3; // hit the glass wall
+        }
+      }
+      if (!d.dead && d.y > by) { d.dead = true; if (Math.random() < .3) splashes.push({ x: d.x, y: by, life: .4 }); }
+    }
+    drops = drops.filter(d => !d.dead && d.x > -10 && d.x < W + 10);
+  }
+
+  // --- rendering ---
+  function draw() {
+    ctx.clearRect(0, 0, W, H);
+    // back bar tiles
+    ctx.fillStyle = '#1d2e2c'; ctx.fillRect(0, 0, W, H);
+    ctx.strokeStyle = 'rgba(243,240,230,.05)'; ctx.lineWidth = 1;
+    for (let y = 0; y < H; y += 28) for (let x = (y / 28) % 2 ? 0 : -28; x < W; x += 56) ctx.strokeRect(x, y, 56, 28);
+    const by = BELT_Y();
+    // conveyor
+    ctx.fillStyle = '#0d1514'; ctx.fillRect(0, by, W, H - by);
+    ctx.fillStyle = '#3a4a48'; ctx.fillRect(0, by, W, 6);
+    ctx.fillStyle = 'rgba(143,163,160,.25)';
+    const off = (time * W * 0.13) % 24;
+    for (let x = -off; x < W; x += 24) ctx.fillRect(x, by + 10, 12, 3);
+    // serve line
+    ctx.strokeStyle = 'rgba(243,240,230,.15)'; ctx.setLineDash([4, 6]);
+    ctx.beginPath(); ctx.moveTo(W * .08, by - H * .5); ctx.lineTo(W * .08, by); ctx.stroke(); ctx.setLineDash([]);
+
+    for (const g of glasses) drawGlass(g);
+
+    const dk = drink();
+    ctx.fillStyle = dk.color;
+    for (const d of drops) { ctx.beginPath(); ctx.arc(d.x, d.y, 2.6, 0, 6.3); ctx.fill(); }
+    ctx.fillStyle = dk.color;
+    for (const s of splashes) { ctx.globalAlpha = s.life / .4; ctx.beginPath(); ctx.ellipse(s.x, s.y, 6 * (1.4 - s.life), 2, 0, 0, 6.3); ctx.fill(); }
+    ctx.globalAlpha = 1;
+
+    drawBottle(dk);
+
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const p of popups) { ctx.globalAlpha = Math.min(1, p.life); ctx.fillStyle = p.color; ctx.font = '16px Bungee, Impact, sans-serif'; ctx.fillText(p.text, p.x, p.y); }
+    ctx.globalAlpha = 1;
+
+    if (state === 'playing' || state === 'over') {
+      ctx.fillStyle = '#f3f0e6'; ctx.font = '30px Bungee, Impact, sans-serif'; ctx.textAlign = 'right'; ctx.fillText(score, W - 14, 30);
+      ctx.font = '11px "IBM Plex Mono", monospace'; ctx.fillStyle = 'rgba(243,240,230,.6)'; ctx.fillText(dk.name.toUpperCase(), W - 14, 54);
+      if (combo > 1) { ctx.fillStyle = '#7ee08f'; ctx.font = '14px Bungee, Impact, sans-serif'; ctx.fillText('×' + combo + ' STREAK', W - 14, 74); }
+    }
+  }
+
+  function drawGlass(g) {
+    const i = inner(g), by = BELT_Y();
+    const pathOutline = (inset) => {
+      const rim = g.w / 2 - inset, bot = (g.w / 2) * (1 - g.type.taper * 2) - inset;
+      ctx.beginPath(); ctx.moveTo(g.x - rim, by - g.h); ctx.lineTo(g.x - bot, by - inset); ctx.lineTo(g.x + bot, by - inset); ctx.lineTo(g.x + rim, by - g.h);
+    };
+    // liquid
+    const fill = Math.min(1.02, g.fill);
+    if (fill > 0) {
+      const sy = i.by - (i.by - i.top) * fill;
+      const dk = drink();
+      ctx.save(); pathOutline(3); ctx.closePath(); ctx.clip();
+      ctx.fillStyle = dk.color;
+      ctx.beginPath(); ctx.moveTo(g.x - g.w, by);
+      for (let k = 0; k <= 10; k++) { const x = g.x - g.w / 2 + g.w * k / 10; ctx.lineTo(x, sy + Math.sin(time * 14 + k) * g.slosh * 4); }
+      ctx.lineTo(g.x + g.w, by); ctx.closePath(); ctx.fill();
+      if (dk.foam) { ctx.fillStyle = dk.foam; ctx.fillRect(g.x - g.w / 2, sy - 2, g.w, Math.min(10, 3 + g.fill * 8)); }
+      ctx.restore();
+    }
+    // target line with tolerance band
+    const ly = i.by - (i.by - i.top) * g.line, band = (i.by - i.top) * g.tol;
+    const hl = halfAt(g, ly);
+    ctx.fillStyle = 'rgba(126,224,143,.16)'; ctx.fillRect(g.x - hl, ly - band, hl * 2, band * 2);
+    ctx.strokeStyle = g.result || '#f3f0e6'; ctx.lineWidth = 2; ctx.setLineDash([5, 3]);
+    ctx.beginPath(); ctx.moveTo(g.x - hl - 4, ly); ctx.lineTo(g.x + hl + 4, ly); ctx.stroke(); ctx.setLineDash([]);
+    // glass body
+    pathOutline(0);
+    ctx.strokeStyle = 'rgba(220,240,240,.75)'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.fillStyle = 'rgba(220,240,240,.06)'; ctx.fill();
+    ctx.fillStyle = 'rgba(220,240,240,.5)'; ctx.fillRect(g.x - g.w / 2 + 6, by - g.h + 6, 2, g.h * .5); // glint
+    ctx.fillStyle = 'rgba(220,240,240,.35)'; ctx.fillRect(g.x - g.w * .35, by - 5, g.w * .7, 5); // thick base
+    if (g.fill > 1) { ctx.fillStyle = drink().color; ctx.fillRect(g.x - g.w / 2 - 6, by - 3, g.w + 12, 3); }
+  }
+
+  function drawBottle(dk) {
+    const b = bottle(), a = angle * Math.PI / 180;
+    ctx.save(); ctx.translate(b.x, b.y); ctx.rotate(a);
+    const w = b.w, h = b.h, neck = w * .36;
+    ctx.beginPath();
+    ctx.moveTo(-neck / 2, -h / 2); ctx.lineTo(-neck / 2, -h * .28);
+    ctx.quadraticCurveTo(-w / 2, -h * .2, -w / 2, -h * .05); ctx.lineTo(-w / 2, h / 2 - 8);
+    ctx.quadraticCurveTo(-w / 2, h / 2, -w / 2 + 8, h / 2); ctx.lineTo(w / 2 - 8, h / 2);
+    ctx.quadraticCurveTo(w / 2, h / 2, w / 2, h / 2 - 8); ctx.lineTo(w / 2, -h * .05);
+    ctx.quadraticCurveTo(w / 2, -h * .2, neck / 2, -h * .28); ctx.lineTo(neck / 2, -h / 2); ctx.closePath();
+    ctx.save(); ctx.clip();
+    // liquid stays level in world space while the bottle turns
+    ctx.rotate(-a); ctx.fillStyle = dk.color;
+    const levelY = h * .05 * Math.cos(a) - Math.sin(a) * w * .2;
+    ctx.fillRect(-h, levelY, h * 2, h * 2);
+    ctx.restore();
+    ctx.strokeStyle = 'rgba(220,240,240,.8)'; ctx.lineWidth = 2.5; ctx.stroke();
+    ctx.fillStyle = 'rgba(220,240,240,.08)'; ctx.fill();
+    ctx.fillStyle = '#d9824a'; ctx.fillRect(-w / 2, h * .08, w, h * .22); // label
+    ctx.fillStyle = '#14201f'; ctx.font = `${Math.round(w * .2)}px Bungee, Impact, sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('POUR', 0, h * .19);
+    ctx.fillStyle = 'rgba(220,240,240,.5)'; ctx.fillRect(-w / 2 + 5, -h * .02, 3, h * .45);
+    ctx.restore();
+    // angle readout, like a pour gauge
+    ctx.fillStyle = 'rgba(243,240,230,.55)'; ctx.font = '11px "IBM Plex Mono", monospace'; ctx.textAlign = 'left';
+    ctx.fillText(Math.round(angle) + '°', 12, 22);
+  }
+
+  let last = performance.now();
+  function frame(now) {
+    const dt = Math.min(.033, (now - last) / 1000); last = now;
+    readAngle(dt);
+    if (state === 'playing') update(dt);
+    else if (pourGain) pourGain.gain.setTargetAtTime(0, ac.currentTime, .05);
+    for (const p of popups) { p.y -= 30 * dt; p.life -= dt; }
+    popups = popups.filter(p => p.life > 0);
+    for (const s of splashes) s.life -= dt;
+    splashes = splashes.filter(s => s.life > 0);
+    draw();
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
