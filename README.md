@@ -2,6 +2,7 @@
 
 Pocket-sized phone games. Open `index.html` to pick a game.
 
+- **Lyric Motion** (`lyric-motion.html`): a kinetic typography studio. Paste lyrics, pick a style, optionally load the song to sync, and record a music-clip style video.
 - **Ward Nine** (`ward-nine.html`): top-down survival horror roguelite. Flashlight, scarce ammo, keycards and an elevator to the next floor; pick an upgrade after each floor. Touch twin-stick or WASD + mouse.
 - **Swing Line** (`swing-line.html`): one-touch endless swinger. Hold to hook, release to fly; perfect releases chain into boosts.
 - **Drop Zone** (`drop-zone.html`): endless. Tilt to steer a falling ball through the gaps as the floors rise; chain drops for multipliers and collect gems to unlock balls.

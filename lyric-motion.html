@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0c0b10">
+<title>Lyric Motion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Bebas+Neue&family=Rubik+Mono+One&family=Playfair+Display:ital,wght@1,900&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<style>
+  /* Layout: preview stage first (the clip), transport under it, then the lyric sheet and style controls.
+     Two columns on wide screens, one stacked column on phones. */
+  :root {
+    --bg: #0c0b10;
+    --panel: #16151c;
+    --line: #2a2833;
+    --ink: #f2f0f7;
+    --muted: #8d8a99;
+    --hot: #ff3d7f;
+    --cool: #39e5ff;
+    --display: "Anton", "Impact", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink); font-family: var(--mono); font-size: 14px;
+    padding: max(14px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+  }
+  header { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; max-width: 1180px; margin: 0 auto 14px; }
+  h1 { font-family: var(--display); font-weight: 400; font-size: 2rem; margin: 0; letter-spacing: .02em; line-height: 1; }
+  h1 span { color: var(--hot); }
+  .back { color: var(--ink); text-decoration: none; margin-right: 10px; opacity: .6; font-family: var(--mono); font-size: 1.4rem; }
+  header p { margin: 0; color: var(--muted); font-size: .8rem; text-align: right; }
+  .app { max-width: 1180px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 20px; align-items: start; }
+  @media (max-width: 820px) { .app { grid-template-columns: minmax(0, 1fr); } header p { display: none; } }
+  .stage-col { display: flex; flex-direction: column; gap: 12px; min-width: 0; position: sticky; top: 12px; }
+  @media (max-width: 820px) { .stage-col { position: static; } }
+  .stage { display: flex; justify-content: center; background: #000; border-radius: 12px; padding: 10px; border: 1px solid var(--line); }
+  canvas { display: block; max-width: 100%; max-height: 62vh; border-radius: 6px; }
+  .transport { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .transport input[type=range] { flex: 1 1 160px; min-width: 0; accent-color: var(--hot); }
+  .time { font-variant-numeric: tabular-nums; color: var(--muted); font-size: .8rem; min-width: 92px; text-align: right; }
+  button {
+    font: 600 .85rem var(--mono); color: var(--ink); background: var(--panel); border: 1px solid var(--line);
+    border-radius: 8px; padding: 10px 14px; cursor: pointer;
+  }
+  button:hover { border-color: var(--muted); }
+  button:focus-visible, select:focus-visible, textarea:focus-visible, input:focus-visible { outline: 2px solid var(--cool); outline-offset: 2px; }
+  button.primary { background: var(--hot); border-color: var(--hot); color: #14060c; font-family: var(--display); font-weight: 400; font-size: 1.15rem; letter-spacing: .04em; padding: 8px 22px; }
+  button.rec { color: var(--hot); }
+  button.rec.on { background: var(--hot); color: #14060c; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .panel h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 1.2rem; letter-spacing: .04em; }
+  label.field { display: flex; flex-direction: column; gap: 6px; font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); min-width: 0; }
+  textarea { width: 100%; min-height: 220px; resize: vertical; background: #0e0d13; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 12px; font: 400 .95rem/1.55 var(--mono); }
+  select, input[type=number] { background: #0e0d13; color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; font: inherit; font-size: .9rem; text-transform: none; letter-spacing: 0; width: 100%; }
+  .grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 420px) { .grid3 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { padding: 8px 12px; border-radius: 999px; font-size: .8rem; }
+  .chip[aria-pressed="true"] { border-color: var(--hot); color: var(--hot); }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .note { margin: 0; color: var(--muted); font-size: .78rem; line-height: 1.55; }
+  .note code { color: var(--cool); }
+  .toggle { display: flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--ink); text-transform: none; letter-spacing: 0; }
+  .file { position: relative; overflow: hidden; }
+  .file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  #dl { color: var(--cool); font-weight: 600; }
+</style>
+</head>
+<body>
+<header>
+  <h1><a class="back" href="index.html" aria-label="Back to the arcade">‹</a>LYRIC <span>MOTION</span></h1>
+  <p>Paste lyrics. Pick a vibe. Get a music-clip style text animation.</p>
+</header>
+
+<div class="app">
+  <div class="stage-col">
+    <div class="stage"><canvas id="c" width="720" height="1280"></canvas></div>
+    <div class="transport">
+      <button class="primary" id="play">PLAY</button>
+      <button id="restart" aria-label="Restart from the top">⟲</button>
+      <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Position">
+      <span class="time" id="time">0:00 / 0:00</span>
+    </div>
+    <div class="row">
+      <button class="rec" id="rec">● RECORD VIDEO</button>
+      <a id="dl" hidden>Download clip</a>
+      <span class="note" id="recNote"></span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>LYRICS</h2>
+    <label class="field" for="lyrics">One line per screen
+      <textarea id="lyrics" spellcheck="false"></textarea>
+    </label>
+    <p class="note">Each line gets its own scene. Words land on the beat. The longest word in a line gets the spotlight, and anything in CAPS or ending in <code>!</code> hits harder. To sync with a song, start a line with a timestamp like <code>[0:12.5]</code>.</p>
+
+    <h2>STYLE</h2>
+    <div class="chips" id="styles" role="group" aria-label="Motion style"></div>
+
+    <div class="grid3">
+      <label class="field" for="theme">Colors
+        <select id="theme"></select>
+      </label>
+      <label class="field" for="font">Typeface
+        <select id="font">
+          <option value="Anton">Anton</option>
+          <option value="Bebas Neue">Bebas Neue</option>
+          <option value="Rubik Mono One">Rubik Mono</option>
+          <option value="Playfair Display">Playfair Italic</option>
+        </select>
+      </label>
+      <label class="field" for="aspect">Format
+        <select id="aspect">
+          <option value="720x1280">9:16 Story</option>
+          <option value="720x720">1:1 Square</option>
+          <option value="1280x720">16:9 Wide</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="grid3">
+      <label class="field" for="bpm">Tempo (BPM)
+        <input type="number" id="bpm" min="50" max="200" value="112">
+      </label>
+      <label class="field" for="offset">Lyrics start (s)
+        <input type="number" id="offset" min="0" step="0.1" value="0.5">
+      </label>
+      <label class="field">Tap tempo
+        <button id="tap" type="button">TAP</button>
+      </label>
+    </div>
+
+    <div class="row">
+      <label class="toggle"><input type="checkbox" id="caps" checked> ALL CAPS</label>
+      <label class="toggle"><input type="checkbox" id="loop" checked> Loop</label>
+    </div>
+
+    <h2>MUSIC</h2>
+    <div class="row">
+      <button class="file" type="button">LOAD SONG<input type="file" id="audioFile" accept="audio/*" aria-label="Load a song file"></button>
+      <span class="note" id="audioName">No song loaded. The animation runs on the tempo above.</span>
+    </div>
+    <p class="note">With a song loaded, the background pulses with the bass, and recorded clips include the audio.</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const cv = $('c'), ctx = cv.getContext('2d');
+
+  // sample lyrics, written for this demo
+  $('lyrics').value = [
+    'Turn the city lights up',
+    'We were never meant to slow down',
+    'Hearts like thunder in the dark',
+    'Say it LOUDER!',
+    'Every heartbeat is a drum',
+    "We don't stop, we don't stop",
+    'Till the morning finds us gold',
+  ].join('\n');
+
+  const THEMES = {
+    Neon: { bg: ['#07060d', '#1b0b2e'], text: '#ffffff', accent: '#ff3d7f', accent2: '#39e5ff' },
+    Sunset: { bg: ['#2b0f3a', '#ff6b3d'], text: '#fff4e6', accent: '#ffd23f', accent2: '#ff3d7f' },
+    Mono: { bg: ['#000000', '#141414'], text: '#ffffff', accent: '#ff2a2a', accent2: '#9a9a9a' },
+    Paper: { bg: ['#f1ebe0', '#e3d9c6'], text: '#141210', accent: '#e8402c', accent2: '#2b59c3' },
+    Acid: { bg: ['#0a1a0a', '#003b2b'], text: '#eaffd6', accent: '#b6ff3b', accent2: '#ff3df2' },
+    Ocean: { bg: ['#021428', '#0a4a6e'], text: '#e8f7ff', accent: '#4dfcff', accent2: '#ffb84d' },
+  };
+  const STYLES = {
+    Mix: ['drop', 'pop', 'slide', 'zoom', 'wave', 'glitch', 'type', 'spin'],
+    Bounce: ['drop', 'pop', 'spin'],
+    Smooth: ['slide', 'zoom', 'wave'],
+    Glitch: ['glitch', 'type', 'zoom'],
+    Typewriter: ['type'],
+  };
+  const EXITS = ['scatter', 'up', 'shrink', 'smash'];
+  let style = 'Mix';
+
+  for (const name of Object.keys(THEMES)) { const o = document.createElement('option'); o.value = o.textContent = name; $('theme').append(o); }
+  for (const name of Object.keys(STYLES)) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = name;
+    b.setAttribute('aria-pressed', name === style);
+    b.addEventListener('click', () => { style = name; [...$('styles').children].forEach(c => c.setAttribute('aria-pressed', c === b)); rebuild(); });
+    $('styles').append(b);
+  }
+
+  // --- helpers ---
+  const clamp = (v, a = 0, b = 1) => Math.max(a, Math.min(b, v));
+  const easeOutBack = t => { const c = 1.9; return 1 + (c + 1) * Math.pow(t - 1, 3) + c * Math.pow(t - 1, 2); };
+  const easeOutExpo = t => t >= 1 ? 1 : 1 - Math.pow(2, -10 * t);
+  const easeInCubic = t => t * t * t;
+  const easeOutBounce = t => {
+    const n = 7.5625, d = 2.75;
+    if (t < 1 / d) return n * t * t;
+    if (t < 2 / d) return n * (t -= 1.5 / d) * t + .75;
+    if (t < 2.5 / d) return n * (t -= 2.25 / d) * t + .9375;
+    return n * (t -= 2.625 / d) * t + .984375;
+  };
+  const rng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+  // --- timeline ---
+  let lines = [], total = 0, beat = .5, offset = .5;
+  function rebuild() {
+    const bpm = clamp(+$('bpm').value || 112, 50, 200); beat = 60 / bpm;
+    offset = Math.max(0, +$('offset').value || 0);
+    const caps = $('caps').checked, pool = STYLES[style];
+    lines = []; let t = offset, idx = 0;
+    for (let raw of $('lyrics').value.split('\n')) {
+      let at = null; const m = raw.match(/^\s*\[(\d+):(\d+(?:\.\d+)?)\]\s*/);
+      if (m) { at = +m[1] * 60 + +m[2]; raw = raw.slice(m[0].length); }
+      raw = raw.trim(); if (!raw) continue;
+      if (at != null) t = at;
+      const r = rng(idx * 977 + raw.length * 31 + 7);
+      const words = raw.split(/\s+/).map(w => caps ? w.toUpperCase() : w);
+      const longest = words.reduce((a, w, i) => w.replace(/\W/g, '').length > words[a].replace(/\W/g, '').length ? i : a, 0);
+      const line = { start: t, words: [], effect: pool[Math.floor(r() * pool.length)], exit: EXITS[Math.floor(r() * EXITS.length)], tilt: (r() - .5) * .08, seed: idx * 101 + 3, layout: null };
+      let wt = t;
+      words.forEach((w, i) => {
+        const loud = /!$/.test(w) || (w.length > 2 && w === w.toUpperCase() && !caps && /[A-Z]/.test(w));
+        line.words.push({ text: w, t: wt, hero: i === longest || loud, loud });
+        wt += beat * (w.length > 7 || loud ? 1 : .5);
+      });
+      line.end = wt + beat * 1.5; line.exitDur = beat * .6;
+      lines.push(line); t = line.end + line.exitDur; idx++;
+    }
+    // with timestamps, squeeze a line so it clears out before the next one starts
+    for (let i = 0; i < lines.length - 1; i++) {
+      const L = lines[i], next = lines[i + 1].start;
+      if (L.end + L.exitDur > next) {
+        const room = Math.max(.3, next - L.start - L.exitDur);
+        const need = L.end - L.start, k = room / need;
+        L.words.forEach(w => w.t = L.start + (w.t - L.start) * k); L.end = L.start + room;
+      }
+    }
+    const last = lines[lines.length - 1];
+    total = last ? last.end + last.exitDur + .6 : 2;
+    if (audio && isFinite(audio.duration)) total = Math.max(total, audio.duration); // with a song, play it to the end
+    updateTime();
+  }
+
+  // --- layout: wrap words into rows that fit the frame, hero words bigger ---
+  function layoutLine(L) {
+    const key = `${cv.width}x${cv.height}|${$('font').value}`;
+    if (L.layout && L.layout.key === key) return L.layout;
+    const W = cv.width, H = cv.height, font = fontCss(1).replace('1px', '');
+    const maxW = W * .84;
+    let base = Math.min(W, H) * .17;
+    let rows;
+    for (let tries = 0; tries < 20; tries++) {
+      rows = []; let row = [], rowW = 0;
+      for (const w of L.words) {
+        const size = base * (w.hero ? 1.45 : 1) * (w.loud ? 1.15 : 1);
+        ctx.font = fontCss(size);
+        const ww = ctx.measureText(w.text).width, gap = size * .25;
+        if (row.length && rowW + gap + ww > maxW) { rows.push({ items: row, w: rowW }); row = []; rowW = 0; }
+        row.push({ w, size, ww }); rowW += (row.length > 1 ? gap : 0) + ww;
+      }
+      if (row.length) rows.push({ items: row, w: rowW });
+      const tooWide = rows.some(r => r.w > maxW * 1.02), height = rows.reduce((a, r) => a + Math.max(...r.items.map(i => i.size)) * 1.02, 0);
+      if (!tooWide && height < H * .72) break;
+      base *= .9;
+    }
+    const totalH = rows.reduce((a, r) => a + Math.max(...r.items.map(i => i.size)) * 1.02, 0);
+    let y = H / 2 - totalH / 2;
+    const placed = [];
+    for (const r of rows) {
+      const rh = Math.max(...r.items.map(i => i.size)) * 1.02; y += rh;
+      let x = W / 2 - r.w / 2;
+      for (const it of r.items) {
+        ctx.font = fontCss(it.size);
+        const chars = [...it.w.text]; let cx = x; const cw = chars.map(ch => { const w = ctx.measureText(ch).width; const o = cx; cx += w; return { ch, x: o, w }; });
+        placed.push({ word: it.w, x, y: y - rh * .12, size: it.size, width: it.ww, chars: cw });
+        x += it.ww + it.size * .25;
+      }
+    }
+    L.layout = { key, placed };
+    return L.layout;
+  }
+  function fontCss(size) {
+    const f = $('font').value;
+    if (f === 'Playfair Display') return `italic 900 ${size}px "Playfair Display", Georgia, serif`;
+    if (f === 'Rubik Mono One') return `${size * .78}px "Rubik Mono One", Impact, sans-serif`;
+    return `${size}px "${f}", Impact, "Arial Narrow", sans-serif`;
+  }
+
+  // --- background ---
+  const motes = Array.from({ length: 70 }, (_, i) => { const r = rng(i + 1); return { x: r(), y: r(), s: .5 + r() * 2.5, v: .01 + r() * .04, ph: r() * 6 }; });
+  let pulse = 0, bassAvg = 0, lastBeatIdx = -1, ring = 0;
+
+  function drawBackground(t, th, L) {
+    const W = cv.width, H = cv.height;
+    const g = ctx.createLinearGradient(0, 0, W * .3, H);
+    g.addColorStop(0, th.bg[0]); g.addColorStop(1, th.bg[1]);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    // giant ghost of the hero word sliding behind everything
+    if (L) {
+      const hero = L.words.find(w => w.hero);
+      if (hero) {
+        ctx.save(); ctx.globalAlpha = .07 + pulse * .05; ctx.fillStyle = th.text;
+        ctx.font = fontCss(Math.min(W, H) * .55); ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.translate(W / 2 + (t - L.start) * -W * .04, H / 2); ctx.rotate(-.12);
+        ctx.fillText(hero.text.replace(/[^\p{L}\p{N}']/gu, ''), 0, 0); ctx.restore();
+      }
+    }
+    // beat ring
+    if (ring > 0) {
+      ctx.strokeStyle = th.accent; ctx.globalAlpha = ring * .5; ctx.lineWidth = Math.min(W, H) * .012;
+      ctx.beginPath(); ctx.arc(W / 2, H / 2, Math.min(W, H) * (.25 + (1 - ring) * .6), 0, 6.3); ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    for (const m of motes) {
+      const y = ((m.y - t * m.v) % 1 + 1) % 1;
+      ctx.globalAlpha = .25 + pulse * .5; ctx.fillStyle = m.ph > 3 ? th.accent2 : th.text;
+      ctx.beginPath(); ctx.arc(m.x * W + Math.sin(t + m.ph) * 12, y * H, m.s * (1 + pulse * 1.5) * W / 720, 0, 6.3); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    // a light flash on strong beats
+    if (pulse > .55) { ctx.fillStyle = th.text; ctx.globalAlpha = (pulse - .55) * .25; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1; }
+  }
+
+  // --- drawing one word with its entrance and the line's exit ---
+  function drawWord(pw, L, t, th, wi) {
+    const W = cv.width, H = cv.height, w = pw.word;
+    const p = clamp((t - w.t) / (beat * .9));          // entrance progress
+    if (t < w.t) return;
+    const q = clamp((t - L.end) / L.exitDur);          // exit progress
+    const r = rng(L.seed * 13 + wi * 7);
+    const color = w.hero ? th.accent : (wi % 5 === 3 ? th.accent2 : th.text);
+    ctx.font = fontCss(pw.size); ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left';
+
+    // word-level transform
+    let ox = 0, oy = 0, sc = 1, rot = 0, alpha = 1, visible = pw.chars.length;
+    const e = L.effect;
+    if (e === 'drop') oy = -(1 - easeOutBounce(p)) * H * .7;
+    if (e === 'pop') { sc = Math.max(0, easeOutBack(p)); rot = (1 - p) * (r() < .5 ? -.7 : .7); }
+    if (e === 'slide') ox = (1 - easeOutExpo(p)) * W * (wi % 2 ? 1.1 : -1.1);
+    if (e === 'zoom') { sc = 1 + (1 - easeOutExpo(p)) * 5; alpha = p; }
+    if (e === 'type') visible = Math.max(1, Math.ceil(p * pw.chars.length));
+    if (e === 'spin') { rot = (1 - easeOutExpo(p)) * Math.PI * 2 * (wi % 2 ? 1 : -1); sc = .3 + .7 * easeOutBack(p); }
+    if (e === 'glitch' && p < 1 && r() < .9) { ox = (Math.random() - .5) * pw.size * .5 * (1 - p); oy = (Math.random() - .5) * pw.size * .2 * (1 - p); }
+
+    // the line's exit
+    const ex = L.exit;
+    if (q > 0) {
+      if (ex === 'up') { oy -= easeInCubic(q) * H * .6; alpha *= 1 - q; }
+      if (ex === 'shrink') { sc *= 1 - easeInCubic(q); }
+      if (ex === 'smash') { sc *= 1 + easeInCubic(q) * 3; alpha *= 1 - q; }
+    }
+    // the hero word throbs on the beat
+    if (w.hero && p >= 1) sc *= 1 + pulse * .08;
+
+    const cx = pw.x + pw.width / 2, cy = pw.y - pw.size * .35;
+    ctx.save();
+    ctx.translate(cx + ox, cy + oy); ctx.rotate(rot); ctx.scale(sc, sc); ctx.translate(-cx, -cy);
+    ctx.globalAlpha = clamp(alpha);
+
+    const drawChars = (fill, dx = 0, dy = 0) => {
+      for (let i = 0; i < visible; i++) {
+        const c = pw.chars[i];
+        let cdx = dx, cdy = dy, crot = 0, ca = 1;
+        if (e === 'wave') { const intro = easeOutExpo(clamp(p * 1.4 - i * .05)); cdy += Math.sin(t * 7 + i * .7) * pw.size * .08 - (1 - intro) * pw.size; ca = intro; }
+        if (ex === 'scatter' && q > 0) {
+          const cr = rng(L.seed + wi * 31 + i * 3);
+          cdx += (cr() - .5) * W * 1.2 * easeInCubic(q); cdy += (cr() - .5) * H * 1.2 * easeInCubic(q); crot = (cr() - .5) * 6 * q;
+          ca = 1 - q;
+        }
+        ctx.save(); ctx.globalAlpha *= ca;
+        ctx.translate(c.x + c.w / 2 + cdx, pw.y + cdy); ctx.rotate(crot);
+        ctx.fillStyle = fill; ctx.fillText(c.ch, -c.w / 2, 0);
+        ctx.restore();
+      }
+    };
+
+    // slide motion trail
+    if (e === 'slide' && p < 1) { ctx.globalAlpha = .25 * alpha; drawChars(color, -(1 - p) * W * .15 * (wi % 2 ? 1 : -1)); ctx.globalAlpha = clamp(alpha); }
+    // glitch / loud: chromatic split
+    if (e === 'glitch' || w.loud) {
+      const split = (e === 'glitch' ? pw.size * .04 : pw.size * .025) * (1 + pulse * 2);
+      ctx.globalCompositeOperation = th.bg[0] === '#f1ebe0' ? 'multiply' : 'lighter';
+      drawChars('rgba(255,0,80,.75)', -split, 0); drawChars('rgba(0,220,255,.75)', split, 0);
+      ctx.globalCompositeOperation = 'source-over';
+    }
+    // hero words get a hard offset shadow
+    if (w.hero) drawChars(th.accent2, pw.size * .05, pw.size * .05);
+    drawChars(color);
+    // typewriter cursor
+    if (e === 'type' && p < 1) { const c = pw.chars[visible - 1]; ctx.fillStyle = th.accent; ctx.fillRect(c.x + c.w + 4, pw.y - pw.size * .75, pw.size * .08, pw.size * .8); }
+    ctx.restore();
+  }
+
+  function render(t) {
+    const th = THEMES[$('theme').value];
+    const W = cv.width, H = cv.height;
+    // beat clock (from tempo) and bass energy (from the song) drive the pulse
+    const bi = Math.floor((t - offset) / beat);
+    let target = t > offset ? Math.exp(-((t - offset) % beat) * 7) * .7 : 0;
+    if (analyser && !audio.paused) {
+      analyser.getByteFrequencyData(freq);
+      let b = 0; for (let i = 1; i < 7; i++) b += freq[i]; b /= 6 * 255;
+      bassAvg = bassAvg * .95 + b * .05;
+      target = clamp((b - bassAvg) * 5 + b * .3);
+    }
+    pulse = Math.max(target, pulse * .85);
+    if (bi !== lastBeatIdx && t > offset) { lastBeatIdx = bi; if (bi % 2 === 0) ring = 1; }
+    ring = Math.max(0, ring - .03);
+
+    const L = lines.find(l => t >= l.start - .05 && t < l.end + l.exitDur);
+    ctx.save();
+    drawBackground(t, th, L);
+    if (L) {
+      // a small camera move per line: drift, tilt and a kick on the beat
+      const k = (t - L.start) / Math.max(.1, L.end + L.exitDur - L.start);
+      ctx.translate(W / 2, H / 2); ctx.rotate(L.tilt); ctx.scale(1 + k * .06 + pulse * .025, 1 + k * .06 + pulse * .025); ctx.translate(-W / 2, -H / 2);
+      const lay = layoutLine(L);
+      lay.placed.forEach((pw, i) => drawWord(pw, L, t, th, i));
+    } else if (t < offset || !lines.length) {
+      ctx.fillStyle = th.text; ctx.globalAlpha = .4; ctx.font = fontCss(Math.min(W, H) * .06); ctx.textAlign = 'center';
+      ctx.fillText(lines.length ? '' : 'PASTE SOME LYRICS', W / 2, H / 2);
+    }
+    ctx.restore();
+    // film grain-ish scanlines for the glitch style
+    if (L && L.effect === 'glitch') { ctx.fillStyle = 'rgba(0,0,0,.12)'; for (let y = 0; y < H; y += 4) ctx.fillRect(0, y, W, 1); }
+  }
+
+  // --- playback ---
+  let playing = false, t0 = 0, pos = 0;
+  let audio = null, actx = null, analyser = null, freq = null, mediaDest = null;
+  const now = () => audio && playing ? audio.currentTime : playing ? (performance.now() - t0) / 1000 : pos;
+  function play() {
+    if (pos >= total - .05) pos = 0;
+    playing = true; $('play').textContent = 'PAUSE';
+    if (audio) { if (actx && actx.state === 'suspended') actx.resume(); audio.currentTime = pos; audio.play().catch(() => {}); }
+    else t0 = performance.now() - pos * 1000;
+  }
+  function pause() { pos = now(); playing = false; $('play').textContent = 'PLAY'; if (audio) audio.pause(); }
+  function seek(s) { pos = clamp(s, 0, total); lastBeatIdx = -1; if (playing) { if (audio) audio.currentTime = pos; else t0 = performance.now() - pos * 1000; } }
+  function updateTime() { const t = now(); $('time').textContent = `${fmt(t)} / ${fmt(total)}`; if (document.activeElement !== $('seek')) $('seek').value = Math.round(t / Math.max(.01, total) * 1000); }
+
+  $('play').addEventListener('click', () => playing ? pause() : play());
+  $('restart').addEventListener('click', () => { seek(0); if (!playing) play(); });
+  $('seek').addEventListener('input', e => seek(e.target.value / 1000 * total));
+  ['lyrics', 'bpm', 'offset', 'caps'].forEach(id => $(id).addEventListener('input', rebuild));
+  ['font', 'aspect'].forEach(id => $(id).addEventListener('change', () => { if (id === 'aspect') { const [w, h] = $('aspect').value.split('x').map(Number); cv.width = w; cv.height = h; } lines.forEach(l => l.layout = null); }));
+  document.addEventListener('keydown', e => { if (e.code === 'Space' && !/TEXTAREA|INPUT|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); $('play').click(); } });
+
+  // tap tempo
+  let taps = [];
+  $('tap').addEventListener('click', () => {
+    const n = performance.now(); taps = taps.filter(x => n - x < 3000); taps.push(n);
+    if (taps.length >= 3) { const iv = (taps[taps.length - 1] - taps[0]) / (taps.length - 1); $('bpm').value = Math.round(60000 / iv); rebuild(); }
+    $('tap').textContent = taps.length >= 3 ? `${$('bpm').value} BPM` : `TAP ${taps.length}`;
+  });
+
+  // song loading
+  $('audioFile').addEventListener('change', e => {
+    const f = e.target.files[0]; if (!f) return;
+    if (!audio) {
+      audio = new Audio(); audio.crossOrigin = 'anonymous';
+      try {
+        actx = new (window.AudioContext || window.webkitAudioContext)();
+        const src = actx.createMediaElementSource(audio);
+        analyser = actx.createAnalyser(); analyser.fftSize = 512; freq = new Uint8Array(analyser.frequencyBinCount);
+        mediaDest = actx.createMediaStreamDestination ? actx.createMediaStreamDestination() : null;
+        src.connect(analyser); analyser.connect(actx.destination); if (mediaDest) analyser.connect(mediaDest);
+      } catch (err) { analyser = null; }
+      audio.addEventListener('ended', () => { if (playing && !recording) { pause(); pos = 0; } });
+    }
+    pause(); pos = 0;
+    audio.src = URL.createObjectURL(f);
+    audio.addEventListener('loadedmetadata', () => { rebuild(); }, { once: true });
+    $('audioName').textContent = `♪ ${f.name}`;
+  });
+
+  // --- recording a clip ---
+  let recorder = null, recording = false, chunks = [];
+  $('rec').addEventListener('click', () => {
+    if (recording) { stopRec(); return; }
+    if (!cv.captureStream || typeof MediaRecorder === 'undefined') { $('recNote').textContent = 'This browser cannot record video. Try Chrome or Safari 15+.'; return; }
+    const stream = cv.captureStream(30);
+    if (audio && mediaDest) mediaDest.stream.getAudioTracks().forEach(tr => stream.addTrack(tr));
+    const type = ['video/mp4;codecs=avc1', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm'].find(m => MediaRecorder.isTypeSupported(m)) || '';
+    try { recorder = new MediaRecorder(stream, type ? { mimeType: type, videoBitsPerSecond: 8e6 } : undefined); }
+    catch (err) { $('recNote').textContent = 'Recording failed to start in this browser.'; return; }
+    chunks = []; recorder.ondataavailable = ev => ev.data.size && chunks.push(ev.data);
+    recorder.onstop = () => {
+      const mime = recorder.mimeType || 'video/webm', ext = mime.includes('mp4') ? 'mp4' : 'webm';
+      const url = URL.createObjectURL(new Blob(chunks, { type: mime }));
+      const a = $('dl'); a.href = url; a.download = `lyric-motion.${ext}`; a.hidden = false; a.textContent = `Download clip (.${ext})`;
+      $('recNote').textContent = 'Done.';
+    };
+    $('dl').hidden = true; recording = true; $('rec').classList.add('on'); $('rec').textContent = '■ STOP';
+    $('recNote').textContent = 'Recording from the top. It stops by itself at the end.';
+    seek(0); recorder.start(250); if (!playing) play();
+  });
+  function stopRec() { if (!recording) return; recording = false; recorder.stop(); $('rec').classList.remove('on'); $('rec').textContent = '● RECORD VIDEO'; pause(); }
+
+  // --- loop ---
+  function frame() {
+    let t = now();
+    if (playing && t >= total) {
+      if (recording) stopRec();
+      else if ($('loop').checked) { seek(0); t = 0; if (audio) audio.currentTime = 0; }
+      else { pause(); pos = total; }
+    }
+    render(t); updateTime();
+    requestAnimationFrame(frame);
+  }
+  rebuild();
+  // open on a frame where a line is fully on screen, so the page shows what it does before you press play
+  pos = lines[0] ? lines[0].end - .05 : 0;
+  document.fonts && document.fonts.load('40px Anton').then(() => lines.forEach(l => l.layout = null));
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

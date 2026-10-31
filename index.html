@@ -25,6 +25,8 @@
     --ward-ground: #0c0d0b;
     --swing: #ffd166;
     --swing-ground: #1a1233;
+    --lyric: #ff3d7f;
+    --lyric-ground: #0c0b10;
     --display: "Bungee", "Impact", "Arial Black", sans-serif;
     --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
     color-scheme: dark;
@@ -48,6 +50,7 @@
   .card.fizz { background: var(--fizz-ground); --accent: var(--fizz); }
   .card.maze { background: var(--maze-ground); --accent: var(--maze); }
   .card.ward { background: var(--ward-ground); --accent: var(--ward); border-color: #262922; }
+  .card.lyric { background: var(--lyric-ground); --accent: var(--lyric); border-color: #2a2833; }
   .card.swing { background: var(--swing-ground); --accent: var(--swing); }
   .card.pour { background: var(--pour-ground); --accent: var(--pour); }
   .card.drop { background: var(--drop-ground); --accent: var(--drop); }
@@ -64,7 +67,16 @@
 <body>
 <main>
   <h1>POCKET ARCADE</h1>
-  <p class="lede">Pocket-sized games for your phone. Pick one.</p>
+  <p class="lede">Pocket-sized games and toys for your phone. Pick one.</p>
+
+  <a class="card lyric" href="lyric-motion.html">
+    <canvas id="iconLyric" width="192" height="192"></canvas>
+    <div>
+      <span class="chip">Studio · Not a game</span>
+      <h2>Lyric Motion</h2>
+      <p>Paste song lyrics and get a music-clip style kinetic text animation. Load the song to sync it, then record the clip.</p>
+    </div>
+  </a>
 
   <a class="card ward" href="ward-nine.html">
     <canvas id="iconWard" width="192" height="192"></canvas>
@@ -199,6 +211,14 @@
   sc.strokeStyle = '#ff4f6d'; sc.lineWidth = 4; sc.lineCap = 'round'; sc.beginPath(); sc.moveTo(36, 46); sc.quadraticCurveTo(26, 50, 18, 44); sc.stroke();
   sc.fillStyle = '#f4efff'; sc.beginPath(); sc.arc(36, 46, 7, 0, 7); sc.fill();
   sc.fillStyle = '#120d24'; sc.fillRect(35, 43, 7, 3);
+
+  const lc = document.getElementById('iconLyric').getContext('2d'); lc.scale(2, 2);
+  const lg = lc.createLinearGradient(0, 0, 30, 96); lg.addColorStop(0, '#07060d'); lg.addColorStop(1, '#1b0b2e');
+  lc.fillStyle = lg; lc.fillRect(16, 4, 64, 88);
+  lc.textAlign = 'center'; lc.font = '15px Impact, sans-serif'; lc.fillStyle = '#fff'; lc.fillText('TURN', 48, 38);
+  lc.save(); lc.translate(48, 62); lc.rotate(-.12); lc.font = '24px Impact, sans-serif';
+  lc.fillStyle = '#39e5ff'; lc.fillText('LOUD', 2, 2); lc.fillStyle = '#ff3d7f'; lc.fillText('LOUD', 0, 0); lc.restore();
+  lc.font = '12px Impact, sans-serif'; lc.fillStyle = '#fff'; lc.fillText('IT UP', 48, 80);
 </script>
 </body>
 </html>
