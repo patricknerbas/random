@@ -2,6 +2,7 @@
 
 Pocket-sized phone games. Open `index.html` to pick a game.
 
+- **Shadow Play** (`shadow-play.html`): daily 3D puzzle. Rotate a wire sculpture until its shadow matches the outline on the wall; three named shadows a day.
 - **Blind Stop** (`blind-stop.html`): daily. Stop the clock at three exact targets; the digits vanish after one second. Emoji share card.
 - **One Line** (`one-line.html`): daily. A shape that vanishes when you touch it; trace it from memory in one stroke. One try, emoji share card.
 - **Guess the Year** (`guess-the-year.html`): daily. Five mystery years with up to three clues each; fewer clues score more. Share an emoji result card.

@@ -33,6 +33,8 @@
     --ol-ground: #1b2a4a;
     --bs: #ff6b33;
     --bs-ground: #191916;
+    --sp: #e7b65a;
+    --sp-ground: #1d1611;
     --display: "Bungee", "Impact", "Arial Black", sans-serif;
     --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
     color-scheme: dark;
@@ -56,6 +58,7 @@
   .card.fizz { background: var(--fizz-ground); --accent: var(--fizz); }
   .card.maze { background: var(--maze-ground); --accent: var(--maze); }
   .card.ward { background: var(--ward-ground); --accent: var(--ward); border-color: #262922; }
+  .card.sp { background: var(--sp-ground); --accent: var(--sp); }
   .card.bs { background: var(--bs-ground); --accent: var(--bs); }
   .card.ol { background: var(--ol-ground); --accent: var(--ol); }
   .card.gty { background: var(--gty-ground); --accent: var(--gty); }
@@ -77,6 +80,16 @@
 <main>
   <h1>POCKET ARCADE</h1>
   <p class="lede">Pocket-sized games and toys for your phone. Pick one.</p>
+
+  <a class="card sp" href="shadow-play.html">
+    <canvas id="iconSp" width="192" height="192"></canvas>
+    <div>
+      <span class="chip">Daily · 3D puzzle</span>
+      <h2>Shadow Play</h2>
+      <p>Twist a wire sculpture in front of a lamp until its shadow fills the shape on the wall. Every shadow has a name.</p>
+      <span class="best" id="bestSp"></span>
+    </div>
+  </a>
 
   <a class="card bs" href="blind-stop.html">
     <canvas id="iconBs" width="192" height="192"></canvas>
@@ -199,6 +212,8 @@
     if (ol.played) document.getElementById('bestOl').textContent = 'Streak ' + ol.streak + ' · best ' + Number(ol.best).toFixed(1) + '%';
     const bs = JSON.parse(localStorage.getItem('bs-stats') || '{}');
     if (bs.played) document.getElementById('bestBs').textContent = 'Streak ' + bs.streak + ' · best ' + Number(bs.best).toFixed(2) + 's off';
+    const spS = JSON.parse(localStorage.getItem('sp-stats') || '{}');
+    if (spS.played) document.getElementById('bestSp').textContent = 'Streak ' + spS.streak + ' · ' + spS.played + ' played';
     if (boards) document.getElementById('bestMaze').textContent = boards + ' board' + (boards > 1 ? 's' : '') + ' cleared';
   } catch (e) {}
 
@@ -288,6 +303,15 @@
   bc.strokeStyle = '#ff6b33'; bc.lineWidth = 4; bc.beginPath(); bc.arc(48, 54, 32, -Math.PI / 2, Math.PI * .9); bc.stroke();
   bc.fillStyle = '#1c1b18'; bc.font = '700 20px "Arial Narrow", sans-serif'; bc.textAlign = 'center'; bc.textBaseline = 'middle';
   bc.fillText('?.??', 48, 55);
+
+  const pc2 = document.getElementById('iconSp').getContext('2d'); pc2.scale(2, 2);
+  const wg2 = pc2.createRadialGradient(48, 44, 4, 48, 48, 50); wg2.addColorStop(0, '#f1e4c8'); wg2.addColorStop(1, '#3a2a1c');
+  pc2.fillStyle = wg2; pc2.fillRect(6, 6, 84, 84);
+  pc2.lineCap = 'round'; pc2.lineJoin = 'round';
+  const fig = [[30, 64], [44, 40], [60, 54], [66, 30]];
+  pc2.strokeStyle = 'rgba(255,122,60,.8)'; pc2.lineWidth = 11; pc2.beginPath(); fig.forEach(([x, y], i) => i ? pc2.lineTo(x, y) : pc2.moveTo(x, y)); pc2.stroke();
+  pc2.strokeStyle = '#e9dcc4'; pc2.lineWidth = 7; pc2.stroke();
+  pc2.strokeStyle = 'rgba(35,22,14,.85)'; pc2.lineWidth = 7; pc2.beginPath(); [[32, 66], [44, 43], [58, 58], [68, 36]].forEach(([x, y], i) => i ? pc2.lineTo(x, y) : pc2.moveTo(x, y)); pc2.stroke();
 </script>
 </body>
 </html>

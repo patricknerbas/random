@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#140f0b">
+<title>Shadow Play</title>
+<meta name="description" content="Twist a wire sculpture in 3D until its shadow matches the shape on the wall. Three a day.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,500&family=DM+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: a dark room. The lit wall (the play area) dominates; a match meter and twist controls sit under it, then the result card. */
+  :root {
+    --room: #140f0b;
+    --wall: #e9dcc4;
+    --ink: #f3e9d6;
+    --muted: #a8977c;
+    --ember: #ff7a3c;
+    --brass: #e7b65a;
+    --serif: "Cormorant Garamond", Georgia, serif;
+    --mono: "DM Mono", ui-monospace, Menlo, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body {
+    background: var(--room); color: var(--ink); font-family: var(--mono); font-size: 14px; line-height: 1.5;
+    padding-block: max(12px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-bottom, 0px));
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    -webkit-user-select: none; user-select: none;
+  }
+  main { max-width: 500px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  h1 { margin: 0; font-family: var(--serif); font-weight: 600; font-size: 2.4rem; line-height: 1; letter-spacing: .01em; }
+  h1 i { font-weight: 500; color: var(--brass); }
+  .back { color: var(--muted); text-decoration: none; font-family: var(--mono); font-size: 1.3rem; margin-right: 6px; }
+  .meta { text-align: right; font-size: .72rem; color: var(--muted); line-height: 1.4; }
+  .title { font-family: var(--serif); font-style: italic; font-size: 1.35rem; color: var(--muted); min-height: 1.4em; text-align: center; }
+  .title b { font-style: normal; font-weight: 600; color: var(--ink); }
+  .wallbox { position: relative; width: 100%; aspect-ratio: 1; border-radius: 6px; overflow: hidden; box-shadow: 0 30px 60px -20px #000; }
+  canvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+  canvas:active { cursor: grabbing; }
+  .meter { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; font-size: .78rem; color: var(--muted); }
+  .bar { height: 8px; border-radius: 4px; background: #2a2018; overflow: hidden; position: relative; }
+  .bar i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, #6b4a2c, var(--ember)); width: 0; transition: width .1s linear; }
+  .bar u { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); text-decoration: none; }
+  .pct { font-variant-numeric: tabular-nums; color: var(--ink); min-width: 4.2em; text-align: right; font-weight: 500; }
+  .controls { display: grid; grid-template-columns: 56px 1fr 56px; gap: 10px; align-items: center; }
+  .controls p { margin: 0; text-align: center; font-size: .76rem; color: var(--muted); line-height: 1.4; }
+  button { font: 500 .9rem var(--mono); color: var(--ink); background: #241b14; border: 1px solid #3a2c20; border-radius: 12px; padding: 12px; cursor: pointer; touch-action: manipulation; }
+  button.twist { height: 56px; font-size: 1.4rem; }
+  button.main { background: var(--brass); color: #1b130c; border-color: var(--brass); font-weight: 500; }
+  button:focus-visible { outline: 2px solid var(--brass); outline-offset: 3px; }
+  .row { display: flex; gap: 10px; }
+  .row button { flex: 1; }
+  .card { background: #1d1611; border: 1px solid #33271d; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; }
+  .card h2 { margin: 0; font-family: var(--serif); font-weight: 600; font-size: 2.6rem; line-height: 1; font-variant-numeric: tabular-nums; }
+  .found { font-family: var(--serif); font-style: italic; font-size: 1.15rem; color: var(--muted); }
+  .emo { font-size: 1.8rem; letter-spacing: .12em; }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; border-top: 1px dashed #33271d; padding-top: 12px; }
+  .stats b { display: block; font-family: var(--serif); font-size: 1.7rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .stats span { font-size: .6rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+  .note { margin: 0; font-size: .76rem; color: var(--muted); }
+  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--room); padding: 10px 16px; border-radius: 999px; font-weight: 500; font-size: .85rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><a class="back" href="index.html" aria-label="Back to games">‹</a>Shadow <i>Play</i></h1>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <div class="title" id="title">Twist the sculpture until its shadow fills the outline.</div>
+
+  <div class="wallbox" id="wallbox"><canvas id="c" aria-label="Wall with shadow. Drag to rotate the sculpture."></canvas></div>
+
+  <div class="meter"><span>Match</span><div class="bar"><i id="fill"></i><u id="mark"></u></div><span class="pct" id="pct">0.0%</span></div>
+
+  <div class="controls" id="controls">
+    <button class="twist" id="ccw" type="button" aria-label="Twist left">⟲</button>
+    <p>Drag the wall to turn it.<br>Twist with two fingers or these buttons.</p>
+    <button class="twist" id="cw" type="button" aria-label="Twist right">⟳</button>
+  </div>
+  <div class="row" id="playRow"><button id="skip" type="button">Reveal &amp; skip</button></div>
+
+  <section class="card" id="done" hidden>
+    <div class="note" id="doneLabel"></div>
+    <h2 id="total">0:00</h2>
+    <div class="found" id="found"></div>
+    <div class="emo" id="emo"></div>
+    <div class="row" style="width:100%"><button class="main" id="share" type="button">Share</button><button id="practice" type="button">Practice</button></div>
+    <div class="stats" id="stats"></div>
+    <p class="note" id="countdown"></p>
+  </section>
+</main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const cv = $('c'), ctx = cv.getContext('2d');
+  const RES = 96;                  // raster size used to compare shadows
+  const WIN = 0.8;                 // overlap needed to count as a match
+  const raster = document.createElement('canvas'); raster.width = raster.height = RES;
+  const rctx = raster.getContext('2d', { willReadFrequently: true });
+
+  const EPOCH = new Date(2026, 9, 31);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const dayNum = Math.round((today - EPOCH) / 864e5) + 1;
+  const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const dayKey = ymd(today);
+  const rng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
+  const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+  // every silhouette gets a name, like a constellation
+  const ADJ = ['Sleeping', 'Crooked', 'Midnight', 'Lonely', 'Dancing', 'Paper', 'Broken', 'Hungry', 'Silver', 'Restless', 'Forgotten', 'Quiet', 'Wandering', 'Clockwork', 'Velvet', 'Patient'];
+  const NOUN = ['Heron', 'Lantern', 'Violinist', 'Kite', 'Fox', 'Tightrope', 'Antenna', 'Scarecrow', 'Compass', 'Weathervane', 'Mantis', 'Ladder', 'Pilgrim', 'Chandelier', 'Juggler', 'Windmill'];
+
+  // --- 3D maths ---
+  const mul = (a, b) => { const r = []; for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) r[i * 3 + j] = a[i * 3] * b[j] + a[i * 3 + 1] * b[3 + j] + a[i * 3 + 2] * b[6 + j]; return r; };
+  const rx = a => [1, 0, 0, 0, Math.cos(a), -Math.sin(a), 0, Math.sin(a), Math.cos(a)];
+  const ry = a => [Math.cos(a), 0, Math.sin(a), 0, 1, 0, -Math.sin(a), 0, Math.cos(a)];
+  const rz = a => [Math.cos(a), -Math.sin(a), 0, Math.sin(a), Math.cos(a), 0, 0, 0, 1];
+  const apply = (m, [x, y, z]) => [m[0] * x + m[1] * y + m[2] * z, m[3] * x + m[4] * y + m[5] * z, m[6] * x + m[7] * y + m[8] * z];
+  const randRot = r => mul(rz(r() * 6.283), mul(ry(r() * 6.283), rx(r() * 6.283)));
+
+  // a sculpture: a branching wire, bent at random in 3D, scaled to fit a unit ball
+  function makeSculpture(r, sticks) {
+    const pts = [[0, 0, 0]], segs = [];
+    for (let i = 0; i < sticks; i++) {
+      const from = i < 2 ? pts.length - 1 : Math.floor(r() * pts.length);
+      let d = [r() - .5, r() - .5, r() - .5]; const l = Math.hypot(...d) || 1; const len = .55 + r() * .6;
+      d = d.map(v => v / l * len);
+      const p = pts[from].map((v, k) => v + d[k]); pts.push(p); segs.push([from, pts.length - 1]);
+    }
+    const c = [0, 1, 2].map(k => pts.reduce((a, p) => a + p[k], 0) / pts.length);
+    const centred = pts.map(p => p.map((v, k) => v - c[k]));
+    const rad = Math.max(...centred.map(p => Math.hypot(...p)));
+    return { pts: centred.map(p => p.map(v => v / rad)), segs };
+  }
+
+  // shadow = orthographic projection onto the wall, drawn as thick strokes
+  function rasterize(S, m) {
+    rctx.clearRect(0, 0, RES, RES);
+    rctx.strokeStyle = '#000'; rctx.lineWidth = RES * .09; rctx.lineCap = 'round';
+    rctx.beginPath();
+    const P = S.pts.map(p => apply(m, p));
+    for (const [a, b] of S.segs) { rctx.moveTo(RES / 2 + P[a][0] * RES * .38, RES / 2 + P[a][1] * RES * .38); rctx.lineTo(RES / 2 + P[b][0] * RES * .38, RES / 2 + P[b][1] * RES * .38); }
+    rctx.stroke();
+    const d = rctx.getImageData(0, 0, RES, RES).data, out = new Uint8Array(RES * RES);
+    for (let i = 0; i < out.length; i++) out[i] = d[i * 4 + 3] > 100 ? 1 : 0;
+    return out;
+  }
+  function iou(a, b) { let i = 0, u = 0; for (let k = 0; k < a.length; k++) { i += a[k] & b[k]; u += a[k] | b[k]; } return u ? i / u : 0; }
+
+  // --- puzzle set ---
+  let mode, puzzles, idx, rot, targetMask, match = 0, startT = 0, results, solved = false, celebrate = 0, revealT = 0;
+  function makeSet(seed) {
+    const r = rng(seed), set = [];
+    // difficulty builds by how many ways you need to turn it: spin only, then spin + tilt, then everything
+    const levels = [{ sticks: 4, axes: 1 }, { sticks: 6, axes: 2 }, { sticks: 7, axes: 3 }];
+    for (const { sticks, axes } of levels) {
+      const S = makeSculpture(r, sticks);
+      const target = randRot(r);
+      const tm = rasterize(S, target);
+      let start, tries = 0;
+      do {
+        const a = (r() < .5 ? -1 : 1) * (.9 + r() * 1.1);         // about 50°–115° off
+        const b = (r() < .5 ? -1 : 1) * (.45 + r() * .6);
+        const c = (r() < .5 ? -1 : 1) * (.4 + r() * .8);
+        // start = target turned away; you turn it back (the turns are in screen space, like the controls)
+        start = axes === 1 ? mul(ry(a), target) : axes === 2 ? mul(rx(b), mul(ry(a), target)) : mul(rz(c), mul(rx(b), mul(ry(a), target)));
+        tries++;
+      } while (iou(rasterize(S, start), tm) > .3 && tries < 40);
+      set.push({ S, target, start, axes, name: `The ${ADJ[Math.floor(r() * ADJ.length)]} ${NOUN[Math.floor(r() * NOUN.length)]}` });
+    }
+    return set;
+  }
+
+  let stats = load('sp-stats', { played: 0, streak: 0, best: null, sum: 0, lastDay: null });
+
+  function begin(m) {
+    mode = m; idx = 0; results = [];
+    puzzles = makeSet(m === 'daily' ? dayNum * 40503 + 11 : Math.floor(Math.random() * 1e9));
+    $('meta').innerHTML = m === 'daily' ? `#${dayNum}<br>${today.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : 'Practice<br>not counted';
+    $('done').hidden = true; $('controls').hidden = false; $('playRow').hidden = false;
+    loadPuzzle();
+  }
+  function loadPuzzle() {
+    const P = puzzles[idx];
+    rot = P.start.slice(); targetMask = rasterize(P.S, P.target);
+    solved = false; celebrate = 0; revealT = 0; startT = performance.now();
+    $('title').innerHTML = `Shadow ${idx + 1} of 3 · <b>${['just spin it', 'spin and tilt', 'any way it takes'][idx]}</b>`;
+    measure();
+  }
+  function measure() { match = iou(rasterize(puzzles[idx].S, rot), targetMask); }
+
+  function win(skipped) {
+    solved = true; celebrate = 1;
+    const secs = (performance.now() - startT) / 1000;
+    results.push({ secs, skipped, name: puzzles[idx].name });
+    if (skipped) { rot = puzzles[idx].target.slice(); measure(); }
+    $('title').innerHTML = skipped ? `It was <b>${puzzles[idx].name}</b>.` : `You found <b>${puzzles[idx].name}</b> in ${secs.toFixed(1)}s`;
+    chime(skipped); try { navigator.vibrate && navigator.vibrate(skipped ? 30 : [20, 40, 20, 40, 60]); } catch (e) {}
+    setTimeout(() => { idx++; if (idx < 3) loadPuzzle(); else finish(); }, 1900);
+  }
+
+  function finish() {
+    const total = results.reduce((a, r) => a + r.secs, 0), skips = results.filter(r => r.skipped).length;
+    if (mode === 'daily') {
+      const y = new Date(today); y.setDate(y.getDate() - 1);
+      stats.streak = stats.lastDay === ymd(y) ? stats.streak + 1 : 1;
+      stats.played++; stats.sum += total; if (!skips) stats.best = stats.best == null ? total : Math.min(stats.best, total); stats.lastDay = dayKey;
+      store('sp-stats', stats); store('sp-day', { key: dayKey, results });
+    }
+    showDone();
+  }
+  const EMOJI = r => r.skipped ? '🟥' : r.secs < 20 ? '🟩' : r.secs < 60 ? '🟨' : '🟧';
+  const fmt = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  function showDone() {
+    const total = results.reduce((a, r) => a + r.secs, 0);
+    $('controls').hidden = true; $('playRow').hidden = true; $('done').hidden = false;
+    $('doneLabel').textContent = mode === 'daily' ? `Shadow Play #${dayNum} · total time` : 'Practice · total time';
+    $('total').textContent = fmt(total);
+    $('found').textContent = results.map(r => r.name).join(' · ');
+    $('emo').textContent = results.map(EMOJI).join(' ');
+    const avg = stats.played ? fmt(stats.sum / stats.played) : '–';
+    $('stats').innerHTML = `<div><b>${stats.played}</b><span>Played</span></div><div><b>${stats.streak}</b><span>Streak</span></div><div><b>${stats.best == null ? '–' : fmt(stats.best)}</b><span>Best</span></div><div><b>${avg}</b><span>Average</span></div>`;
+    $('title').textContent = mode === 'daily' ? 'The lamp goes out until tomorrow.' : 'Practice set done.';
+    $('practice').textContent = mode === 'daily' ? 'Practice' : 'Again';
+  }
+
+  // --- input: drag to tumble, two fingers to twist ---
+  const pointers = new Map();
+  let lastTwist = null;
+  cv.addEventListener('pointerdown', e => { if (solved || !$('done').hidden) return; cv.setPointerCapture(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); initAudio(); lastTwist = null; });
+  cv.addEventListener('pointermove', e => {
+    if (!pointers.has(e.pointerId) || solved) return;
+    const prev = pointers.get(e.pointerId), now = { x: e.clientX, y: e.clientY };
+    pointers.set(e.pointerId, now);
+    const size = cv.getBoundingClientRect().width;
+    if (pointers.size === 1) {
+      const dx = (now.x - prev.x) / size * 4, dy = (now.y - prev.y) / size * 4;
+      rot = mul(rx(-dy), mul(ry(dx), rot));
+    } else if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()], ang = Math.atan2(b.y - a.y, b.x - a.x);
+      if (lastTwist != null) { let d = ang - lastTwist; if (d > Math.PI) d -= 2 * Math.PI; if (d < -Math.PI) d += 2 * Math.PI; rot = mul(rz(d), rot); }
+      lastTwist = ang;
+    }
+    afterMove();
+  });
+  const up = e => { pointers.delete(e.pointerId); lastTwist = null; };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  let twistHold = null;
+  const twistBtn = (id, dir) => {
+    const el = $(id);
+    const step = () => { if (solved) return; rot = mul(rz(dir * .035), rot); afterMove(); };
+    el.addEventListener('pointerdown', e => { e.preventDefault(); initAudio(); step(); clearInterval(twistHold); twistHold = setInterval(step, 16); });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => el.addEventListener(ev, () => clearInterval(twistHold)));
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); for (let i = 0; i < 5; i++) step(); } });
+  };
+  twistBtn('ccw', -1); twistBtn('cw', 1);
+  document.addEventListener('keydown', e => {
+    if (solved || !$('done').hidden) return;
+    const k = { ArrowLeft: ry(-.06), ArrowRight: ry(.06), ArrowUp: rx(.06), ArrowDown: rx(-.06), q: rz(-.06), e: rz(.06) }[e.key];
+    if (k) { e.preventDefault(); rot = mul(k, rot); afterMove(); }
+  });
+  let lastHum = 0;
+  function afterMove() {
+    measure();
+    hum(match);
+    if (match >= WIN - .04 * idx && !solved) win(false);
+  }
+  $('skip').addEventListener('click', () => { if (!solved) win(true); });
+
+  // --- sound: a low hum that rises as the shadows line up ---
+  let ac = null, osc = null, gain = null;
+  function initAudio() {
+    if (ac) { if (ac.state === 'suspended') ac.resume(); return; }
+    try {
+      ac = new (window.AudioContext || window.webkitAudioContext)();
+      osc = ac.createOscillator(); gain = ac.createGain(); const f = ac.createBiquadFilter();
+      osc.type = 'triangle'; osc.frequency.value = 110; f.type = 'lowpass'; f.frequency.value = 900; gain.gain.value = 0;
+      osc.connect(f).connect(gain).connect(ac.destination); osc.start();
+    } catch (e) { ac = null; }
+  }
+  function hum(m) {
+    if (!ac) return;
+    const t = ac.currentTime;
+    osc.frequency.setTargetAtTime(90 + m * m * 400, t, .05);
+    gain.gain.cancelScheduledValues(t); gain.gain.setTargetAtTime(.04 + m * .08, t, .03); gain.gain.setTargetAtTime(0, t + .15, .2);
+  }
+  function chime(soft) {
+    if (!ac) return;
+    [523, 659, 784, 1047].forEach((fq, i) => {
+      if (soft && i > 1) return;
+      const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + i * .09;
+      o.type = 'sine'; o.frequency.value = soft ? fq / 2 : fq; g.gain.setValueAtTime(.12, t); g.gain.exponentialRampToValueAtTime(.001, t + 1.2);
+      o.connect(g).connect(ac.destination); o.start(t); o.stop(t + 1.3);
+    });
+  }
+
+  // --- rendering ---
+  let S = 300, DPR = 1, plaster = null;
+  function resize() {
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    S = $('wallbox').getBoundingClientRect().width;
+    cv.width = cv.height = Math.round(S * DPR);
+    plaster = document.createElement('canvas'); plaster.width = plaster.height = Math.round(S * DPR);
+    const p = plaster.getContext('2d'), img = p.createImageData(plaster.width, plaster.height);
+    for (let i = 0; i < img.data.length; i += 4) { const v = 225 + Math.random() * 20; img.data[i] = v; img.data[i + 1] = v * .94; img.data[i + 2] = v * .83; img.data[i + 3] = 255; }
+    p.putImageData(img, 0, 0);
+  }
+  addEventListener('resize', resize);
+
+  const proj = (m, p) => { const q = apply(m, p); return [S / 2 + q[0] * S * .38, S / 2 + q[1] * S * .38, q[2]]; };
+
+  function draw(now) {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    ctx.drawImage(plaster, 0, 0, S, S);
+    // lamp light pooling on the wall, warmer as the match improves
+    const warm = match;
+    const g = ctx.createRadialGradient(S / 2, S * .48, S * .05, S / 2, S / 2, S * .75);
+    g.addColorStop(0, `rgba(255,${200 + warm * 30},${140 + warm * 40},${.25 + warm * .2})`); g.addColorStop(.6, 'rgba(60,35,20,.25)'); g.addColorStop(1, 'rgba(20,12,8,.92)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, S, S);
+    if (!puzzles) return;
+    const P = puzzles[idx < 3 ? idx : 2];
+
+    // the outline to fill: a hot rim around the target shape
+    const lw = S * .09;
+    const path = m => { ctx.beginPath(); for (const [a, b] of P.S.segs) { const A = proj(m, P.S.pts[a]), B = proj(m, P.S.pts[b]); ctx.moveTo(A[0], A[1]); ctx.lineTo(B[0], B[1]); } };
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    if (idx < 3 || solved) {
+      path(P.target);
+      ctx.strokeStyle = `rgba(255,122,60,${.55 + Math.sin(now / 400) * .15})`; ctx.lineWidth = lw + 6; ctx.stroke();
+      ctx.strokeStyle = 'rgba(233,220,196,.92)'; ctx.lineWidth = lw; ctx.stroke();
+    }
+
+    // the cast shadow: soft-edged, like a real one
+    ctx.save(); ctx.filter = 'blur(2px)';
+    path(rot); ctx.strokeStyle = solved ? 'rgba(30,18,10,.95)' : 'rgba(35,22,14,.82)'; ctx.lineWidth = lw; ctx.stroke();
+    ctx.restore();
+
+    if (celebrate > 0) {
+      ctx.strokeStyle = `rgba(255,200,120,${celebrate})`; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(S / 2, S / 2, S * (.5 - celebrate * .1), 0, 6.3); ctx.stroke();
+      celebrate = Math.max(0, celebrate - .012);
+    }
+
+    // the sculpture itself, floating in front of the wall (bottom-right), drawn in perspective with brass wire
+    const cx = S * .82, cy = S * .82, sz = S * .12;
+    ctx.fillStyle = 'rgba(20,12,8,.55)'; ctx.beginPath(); ctx.arc(cx, cy, sz * 1.35, 0, 6.3); ctx.fill();
+    const segs = P.S.segs.map(([a, b]) => { const A = apply(rot, P.S.pts[a]), B = apply(rot, P.S.pts[b]); return { A, B, z: (A[2] + B[2]) / 2 }; }).sort((u, v) => v.z - u.z);
+    const persp = p => { const f = 3 / (3 + p[2]); return [cx + p[0] * sz * f, cy + p[1] * sz * f]; };
+    for (const s of segs) {
+      const [ax, ay] = persp(s.A), [bx, by] = persp(s.B), shade = .55 + (1 - (s.z + 1) / 2) * .45;
+      ctx.strokeStyle = `rgba(${Math.round(231 * shade)},${Math.round(182 * shade)},${Math.round(90 * shade)},1)`; ctx.lineWidth = 3.2;
+      ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+    }
+    for (const p of P.S.pts) { const [x, y] = persp(apply(rot, p)); ctx.fillStyle = '#f6d58f'; ctx.beginPath(); ctx.arc(x, y, 2.2, 0, 6.3); ctx.fill(); }
+
+    // timer
+    if ($('done').hidden && !solved) {
+      ctx.fillStyle = 'rgba(243,233,214,.75)'; ctx.font = '500 12px "DM Mono", monospace'; ctx.textAlign = 'left';
+      ctx.fillText(fmt((now - startT) / 1000), 12, 20);
+    }
+  }
+
+  function frame(now) {
+    $('pct').textContent = (match * 100).toFixed(1) + '%';
+    $('fill').style.width = Math.min(100, match / (WIN - .04 * Math.min(idx, 2)) * 100) + '%';
+    draw(now);
+    requestAnimationFrame(frame);
+  }
+
+  // --- share ---
+  $('share').addEventListener('click', async () => {
+    const total = results.reduce((a, r) => a + r.secs, 0);
+    const head = mode === 'daily' ? `Shadow Play #${dayNum} 🕯️ ${fmt(total)}` : `Shadow Play (practice) 🕯️ ${fmt(total)}`;
+    const text = `${head}\n${results.map(EMOJI).join('')}\nFound ${results.filter(r => !r.skipped).map(r => r.name).join(', ') || 'nothing (yet)'}${mode === 'daily' && stats.streak > 1 ? ` · 🔥${stats.streak}` : ''}\n${location.href.split('#')[0]}`;
+    if (navigator.share && /Mobi|Android|iPhone|iPad/.test(navigator.userAgent)) { try { await navigator.share({ text }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+    try { await navigator.clipboard.writeText(text); toast('Copied. Paste it anywhere.'); }
+    catch (e) { const ta = document.createElement('textarea'); ta.value = text; document.body.append(ta); ta.select(); try { document.execCommand('copy'); toast('Copied. Paste it anywhere.'); } catch (err) { toast('Could not copy on this browser.'); } ta.remove(); }
+  });
+  $('practice').addEventListener('click', () => begin('practice'));
+  function toast(t) { const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2200); }
+  function tick() {
+    const next = new Date(today); next.setDate(next.getDate() + 1);
+    const s = Math.max(0, Math.floor((next - new Date()) / 1000));
+    $('countdown').textContent = `New sculptures in ${String(Math.floor(s / 3600)).padStart(2, '0')}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  }
+  setInterval(tick, 1000); tick();
+
+  $('mark').style.left = '100%';
+  resize();
+  const saved = load('sp-day', null);
+  if (saved && saved.key === dayKey) {
+    mode = 'daily'; puzzles = makeSet(dayNum * 40503 + 11); idx = 2; results = saved.results;
+    rot = puzzles[2].target.slice(); targetMask = rasterize(puzzles[2].S, puzzles[2].target); match = 1; solved = true;
+    $('meta').innerHTML = `#${dayNum}<br>played`; showDone();
+  } else begin('daily');
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
