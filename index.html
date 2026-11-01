@@ -35,6 +35,8 @@
     --bs-ground: #191916;
     --sp: #e7b65a;
     --sp-ground: #1d1611;
+    --pl: #ff9fb8;
+    --pl-ground: #1f3a30;
     --display: "Bungee", "Impact", "Arial Black", sans-serif;
     --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
     color-scheme: dark;
@@ -58,6 +60,7 @@
   .card.fizz { background: var(--fizz-ground); --accent: var(--fizz); }
   .card.maze { background: var(--maze-ground); --accent: var(--maze); }
   .card.ward { background: var(--ward-ground); --accent: var(--ward); border-color: #262922; }
+  .card.pl { background: var(--pl-ground); --accent: var(--pl); }
   .card.sp { background: var(--sp-ground); --accent: var(--sp); }
   .card.bs { background: var(--bs-ground); --accent: var(--bs); }
   .card.ol { background: var(--ol-ground); --accent: var(--ol); }
@@ -80,6 +83,16 @@
 <main>
   <h1>POCKET ARCADE</h1>
   <p class="lede">Pocket-sized games and toys for your phone. Pick one.</p>
+
+  <a class="card pl" href="plink.html">
+    <canvas id="iconPl" width="192" height="192"></canvas>
+    <div>
+      <span class="chip">Daily · Physics + music</span>
+      <h2>Plink</h2>
+      <p>Draw chalk ramps to guide a marble into the cup. Every bounce plays a note, so every solution is a little song.</p>
+      <span class="best" id="bestPl"></span>
+    </div>
+  </a>
 
   <a class="card sp" href="shadow-play.html">
     <canvas id="iconSp" width="192" height="192"></canvas>
@@ -214,6 +227,8 @@
     if (bs.played) document.getElementById('bestBs').textContent = 'Streak ' + bs.streak + ' · best ' + Number(bs.best).toFixed(2) + 's off';
     const spS = JSON.parse(localStorage.getItem('sp-stats') || '{}');
     if (spS.played) document.getElementById('bestSp').textContent = 'Streak ' + spS.streak + ' · ' + spS.played + ' played';
+    const plS = JSON.parse(localStorage.getItem('pl-stats') || '{}');
+    if (plS.played) document.getElementById('bestPl').textContent = 'Streak ' + plS.streak + ' · ' + plS.stars + ' stars';
     if (boards) document.getElementById('bestMaze').textContent = boards + ' board' + (boards > 1 ? 's' : '') + ' cleared';
   } catch (e) {}
 
@@ -312,6 +327,15 @@
   pc2.strokeStyle = 'rgba(255,122,60,.8)'; pc2.lineWidth = 11; pc2.beginPath(); fig.forEach(([x, y], i) => i ? pc2.lineTo(x, y) : pc2.moveTo(x, y)); pc2.stroke();
   pc2.strokeStyle = '#e9dcc4'; pc2.lineWidth = 7; pc2.stroke();
   pc2.strokeStyle = 'rgba(35,22,14,.85)'; pc2.lineWidth = 7; pc2.beginPath(); [[32, 66], [44, 43], [58, 58], [68, 36]].forEach(([x, y], i) => i ? pc2.lineTo(x, y) : pc2.moveTo(x, y)); pc2.stroke();
+
+  const kc = document.getElementById('iconPl').getContext('2d'); kc.scale(2, 2);
+  kc.fillStyle = '#6b4a2b'; kc.fillRect(6, 6, 84, 84); kc.fillStyle = '#1f3a30'; kc.fillRect(11, 11, 74, 74);
+  kc.strokeStyle = '#c98b54'; kc.lineWidth = 4; kc.lineCap = 'round'; kc.beginPath(); kc.moveTo(22, 36); kc.lineTo(46, 32); kc.stroke();
+  kc.strokeStyle = '#f1efe6'; kc.lineWidth = 2.5; kc.beginPath(); kc.moveTo(18, 52); kc.quadraticCurveTo(44, 70, 60, 62); kc.stroke();
+  kc.strokeStyle = '#ffe17a'; kc.lineWidth = 2.5; kc.beginPath(); kc.moveTo(60, 66); kc.lineTo(60, 78); kc.lineTo(76, 78); kc.lineTo(76, 66); kc.stroke();
+  const mg = kc.createRadialGradient(36, 22, 1, 38, 24, 5); mg.addColorStop(0, '#fff'); mg.addColorStop(1, '#2a6f9a');
+  kc.fillStyle = mg; kc.beginPath(); kc.arc(38, 24, 5, 0, 7); kc.fill();
+  kc.fillStyle = '#8fd3ff'; kc.font = '14px cursive'; kc.fillText('♪', 50, 48); kc.fillText('♫', 66, 40);
 </script>
 </body>
 </html>
