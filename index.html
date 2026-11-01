@@ -31,6 +31,8 @@
     --gty-ground: #16302b;
     --ol: #ff6a52;
     --ol-ground: #1b2a4a;
+    --bs: #ff6b33;
+    --bs-ground: #191916;
     --display: "Bungee", "Impact", "Arial Black", sans-serif;
     --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
     color-scheme: dark;
@@ -54,6 +56,7 @@
   .card.fizz { background: var(--fizz-ground); --accent: var(--fizz); }
   .card.maze { background: var(--maze-ground); --accent: var(--maze); }
   .card.ward { background: var(--ward-ground); --accent: var(--ward); border-color: #262922; }
+  .card.bs { background: var(--bs-ground); --accent: var(--bs); }
   .card.ol { background: var(--ol-ground); --accent: var(--ol); }
   .card.gty { background: var(--gty-ground); --accent: var(--gty); }
   .card.lyric { background: var(--lyric-ground); --accent: var(--lyric); border-color: #2a2833; }
@@ -74,6 +77,16 @@
 <main>
   <h1>POCKET ARCADE</h1>
   <p class="lede">Pocket-sized games and toys for your phone. Pick one.</p>
+
+  <a class="card bs" href="blind-stop.html">
+    <canvas id="iconBs" width="192" height="192"></canvas>
+    <div>
+      <span class="chip">Daily · Shareable</span>
+      <h2>Blind Stop</h2>
+      <p>Stop the clock at the exact time. The digits go dark after one second. Three targets a day.</p>
+      <span class="best" id="bestBs"></span>
+    </div>
+  </a>
 
   <a class="card ol" href="one-line.html">
     <canvas id="iconOl" width="192" height="192"></canvas>
@@ -184,6 +197,8 @@
     if (gy.played) document.getElementById('bestGty').textContent = 'Streak ' + gy.streak + ' · best ' + gy.best + '/500';
     const ol = JSON.parse(localStorage.getItem('ol-stats') || '{}');
     if (ol.played) document.getElementById('bestOl').textContent = 'Streak ' + ol.streak + ' · best ' + Number(ol.best).toFixed(1) + '%';
+    const bs = JSON.parse(localStorage.getItem('bs-stats') || '{}');
+    if (bs.played) document.getElementById('bestBs').textContent = 'Streak ' + bs.streak + ' · best ' + Number(bs.best).toFixed(2) + 's off';
     if (boards) document.getElementById('bestMaze').textContent = boards + ' board' + (boards > 1 ? 's' : '') + ' cleared';
   } catch (e) {}
 
@@ -266,6 +281,13 @@
   oc.strokeStyle = '#2f9e5b'; oc.lineWidth = 3; oc.lineCap = 'round'; oc.beginPath();
   for (let i = 0; i <= 6; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = (i % 2 ? 13 : 32) + (i % 3 - 1) * 1.5; i ? oc.lineTo(48 + Math.cos(a) * r, 50 + Math.sin(a) * r) : oc.moveTo(48 + Math.cos(a) * r, 50 + Math.sin(a) * r); } oc.stroke();
   oc.fillStyle = '#2f9e5b'; oc.beginPath(); oc.arc(48, 18, 4, 0, 7); oc.fill();
+
+  const bc = document.getElementById('iconBs').getContext('2d'); bc.scale(2, 2);
+  bc.fillStyle = '#2c2b26'; bc.fillRect(44, 8, 8, 8);
+  bc.fillStyle = '#f8f4ea'; bc.beginPath(); bc.arc(48, 54, 36, 0, 7); bc.fill();
+  bc.strokeStyle = '#ff6b33'; bc.lineWidth = 4; bc.beginPath(); bc.arc(48, 54, 32, -Math.PI / 2, Math.PI * .9); bc.stroke();
+  bc.fillStyle = '#1c1b18'; bc.font = '700 20px "Arial Narrow", sans-serif'; bc.textAlign = 'center'; bc.textBaseline = 'middle';
+  bc.fillText('?.??', 48, 55);
 </script>
 </body>
 </html>

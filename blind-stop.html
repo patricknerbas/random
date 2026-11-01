@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ece6d8">
+<title>Blind Stop</title>
+<meta name="description" content="Stop the clock at the exact time. The digits vanish after one second. Three tries a day.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Chivo+Mono:wght@400;600&display=swap">
+<style>
+  /* Layout: a stopwatch face. Target strip on top, giant digits in the middle, one big round button, result slip under it. */
+  :root {
+    --bg: #ece6d8;
+    --face: #f8f4ea;
+    --ink: #1c1b18;
+    --muted: #77715f;
+    --rim: #cfc6b0;
+    --hot: #ff5a1f;
+    --lcd: #1c1b18;
+    --digits: "Chakra Petch", "Arial Narrow", monospace;
+    --mono: "Chivo Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0e0e0c; --face: #191916; --ink: #f1ece0; --muted: #8f8a7c; --rim: #2c2b26; --hot: #ff6b33; --lcd: #f1ece0; color-scheme: dark; } }
+  :root[data-theme="dark"] { --bg: #0e0e0c; --face: #191916; --ink: #f1ece0; --muted: #8f8a7c; --rim: #2c2b26; --hot: #ff6b33; --lcd: #f1ece0; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--ink); font-family: var(--mono); font-size: 14px; line-height: 1.5;
+    padding-block: max(12px, env(safe-area-inset-top, 0px)) max(28px, env(safe-area-inset-bottom, 0px));
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+    -webkit-user-select: none; user-select: none;
+  }
+  main { max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+  header { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  h1 { margin: 0; font-family: var(--digits); font-weight: 700; font-size: 2rem; line-height: 1; text-transform: uppercase; letter-spacing: .02em; }
+  h1 span { color: var(--hot); }
+  .back { color: var(--muted); text-decoration: none; font-family: var(--mono); font-size: 1.3rem; margin-right: 6px; }
+  .meta { text-align: right; font-size: .72rem; color: var(--muted); line-height: 1.4; }
+  .face { background: var(--face); border: 2px solid var(--rim); border-radius: 28px; padding: 22px 18px 26px; display: flex; flex-direction: column; align-items: center; gap: 16px; box-shadow: inset 0 -6px 0 var(--rim); }
+  .targets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; }
+  .tg { border: 1.5px solid var(--rim); border-radius: 12px; padding: 6px 4px; text-align: center; }
+  .tg small { display: block; font-size: .6rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); }
+  .tg b { font-family: var(--digits); font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+  .tg.now { border-color: var(--hot); }
+  .tg.now b { color: var(--hot); }
+  .tg .res { display: block; font-size: .72rem; min-height: 1.1em; }
+  .goal { font-size: .8rem; color: var(--muted); text-transform: uppercase; letter-spacing: .14em; }
+  .goal b { color: var(--ink); font-family: var(--digits); font-size: 1rem; letter-spacing: 0; }
+  .lcd { font-family: var(--digits); font-weight: 700; font-size: clamp(4.4rem, 26vw, 7rem); line-height: 1; color: var(--lcd); font-variant-numeric: tabular-nums; letter-spacing: -.02em; transition: opacity .35s, filter .35s; }
+  .lcd.blind { opacity: .14; filter: blur(6px); }
+  .lcd small { font-size: .45em; }
+  .sub { min-height: 1.5em; font-size: .92rem; text-align: center; }
+  .sub b { color: var(--hot); }
+  .big {
+    width: min(220px, 62vw); aspect-ratio: 1; border-radius: 50%; border: 0; cursor: pointer; touch-action: manipulation;
+    background: var(--hot); color: #fff7ef; font-family: var(--digits); font-weight: 700; font-size: 2rem; letter-spacing: .06em;
+    box-shadow: 0 8px 0 color-mix(in srgb, var(--hot) 55%, #000), inset 0 -6px 0 rgba(0,0,0,.12);
+  }
+  .big:active { transform: translateY(5px); box-shadow: 0 3px 0 color-mix(in srgb, var(--hot) 55%, #000); }
+  .big.stop { background: var(--ink); color: var(--face); box-shadow: 0 8px 0 #000; }
+  .big:focus-visible, button:focus-visible { outline: 3px solid var(--hot); outline-offset: 4px; }
+  .slip { display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; }
+  .total { font-family: var(--digits); font-weight: 700; font-size: 3.6rem; line-height: 1; font-variant-numeric: tabular-nums; }
+  .total small { font-size: 1.2rem; color: var(--muted); }
+  .rating { font-family: var(--digits); font-size: 1.3rem; color: var(--hot); text-transform: uppercase; letter-spacing: .06em; }
+  .emo { font-size: 2rem; letter-spacing: .12em; }
+  .row { display: flex; gap: 10px; width: 100%; }
+  .row button { flex: 1; font: 600 .95rem var(--mono); padding: 14px; border-radius: 12px; cursor: pointer; border: 1.5px solid var(--ink); background: transparent; color: var(--ink); }
+  .row button.solid { background: var(--ink); color: var(--face); }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; width: 100%; border-top: 1px dashed var(--rim); padding-top: 12px; }
+  .stats b { display: block; font-family: var(--digits); font-size: 1.6rem; line-height: 1.1; font-variant-numeric: tabular-nums; }
+  .stats span { font-size: .62rem; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
+  .note { margin: 0; font-size: .78rem; color: var(--muted); text-align: center; }
+  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--face); padding: 10px 16px; border-radius: 999px; font-weight: 600; font-size: .85rem; }
+  @media (prefers-reduced-motion: reduce) { .lcd { transition: none; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1><a class="back" href="index.html" aria-label="Back to games">‹</a>Blind <span>Stop</span></h1>
+    <div class="meta" id="meta"></div>
+  </header>
+
+  <section class="face">
+    <div class="targets" id="targets"></div>
+    <div class="goal" id="goal">Stop at <b>0.00</b> s</div>
+    <div class="lcd" id="lcd" aria-live="off">0.00</div>
+    <div class="sub" id="sub" aria-live="polite">The clock goes dark after one second. Count in your head.</div>
+    <button class="big" id="big" type="button">START</button>
+  </section>
+
+  <section class="slip" id="slip" hidden>
+    <div class="rating" id="rating"></div>
+    <div class="emo" id="emo"></div>
+    <div class="row">
+      <button class="solid" id="share" type="button">Share</button>
+      <button id="practice" type="button">Practice</button>
+    </div>
+    <div class="stats" id="stats"></div>
+    <p class="note" id="countdown"></p>
+  </section>
+</main>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const VISIBLE = 1.0;   // seconds the digits stay readable
+
+  const EPOCH = new Date(2026, 9, 31);
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const dayNum = Math.round((today - EPOCH) / 864e5) + 1;
+  const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const dayKey = ymd(today);
+  const rng = seed => () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  const load = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch (e) { return d; } };
+  const store = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+  // short, medium, long: the further out, the more your inner clock drifts
+  function targetsFor(seed) {
+    const r = rng(seed), q = v => Math.round(v * 100) / 100;
+    return [q(2.5 + r() * 2.5), q(5.5 + r() * 3.5), q(9.5 + r() * 5.5)];
+  }
+
+  const EMOJI = e => e < .05 ? '🎯' : e < .15 ? '🟩' : e < .35 ? '🟨' : e < .7 ? '🟧' : '🟥';
+  const RATING = t => t < .15 ? 'Atomic clock' : t < .4 ? 'Metronome' : t < .9 ? 'Pretty human' : t < 1.8 ? 'Fashionably late' : 'Time is a construct';
+  const signed = d => (d >= 0 ? '+' : '−') + Math.abs(d).toFixed(2);
+
+  let stats = load('bs-stats', { played: 0, streak: 0, best: null, sum: 0, lastDay: null });
+  let mode, targets, round, results, state = 'ready', t0 = 0, raf = 0;
+
+  function begin(m) {
+    mode = m; round = 0; results = []; state = 'ready';
+    targets = targetsFor(m === 'daily' ? dayNum * 2654435761 : Math.floor(Math.random() * 1e9));
+    $('meta').innerHTML = m === 'daily' ? `#${dayNum}<br>${today.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : 'Practice<br>not counted';
+    $('slip').hidden = true; $('big').hidden = false;
+    $('sub').textContent = 'The clock goes dark after one second. Count in your head.';
+    paintTargets(); setLcd(0, false); $('big').textContent = 'START'; $('big').classList.remove('stop');
+  }
+
+  function paintTargets() {
+    $('targets').innerHTML = '';
+    targets.forEach((t, i) => {
+      const d = document.createElement('div'); d.className = 'tg' + (i === round && state !== 'done' ? ' now' : '');
+      const r = results[i];
+      d.innerHTML = `<small>Round ${i + 1}</small><b>${t.toFixed(2)}</b><span class="res">${r ? EMOJI(Math.abs(r.diff)) + ' ' + signed(r.diff) : ''}</span>`;
+      $('targets').append(d);
+    });
+    if (round < 3) $('goal').innerHTML = `Stop at <b>${targets[round].toFixed(2)}</b> s`;
+  }
+
+  function setLcd(sec, blind) {
+    const lcd = $('lcd');
+    lcd.classList.toggle('blind', blind);
+    lcd.textContent = blind ? '?.??' : sec.toFixed(2);
+  }
+
+  function loop() {
+    const s = (performance.now() - t0) / 1000;
+    if (s < VISIBLE) setLcd(s, false); else if (!$('lcd').classList.contains('blind')) setLcd(s, true);
+    raf = requestAnimationFrame(loop);
+  }
+
+  function press(e) {
+    // the timestamp of the press itself, so frame timing doesn't cost you
+    const at = e && e.timeStamp ? e.timeStamp : performance.now();
+    if (state === 'ready') {
+      state = 'running'; t0 = at; $('big').textContent = 'STOP'; $('big').classList.add('stop');
+      $('sub').textContent = `Stop at ${targets[round].toFixed(2)}. Don't look for help.`;
+      buzz(12); raf = requestAnimationFrame(loop);
+    } else if (state === 'running') {
+      cancelAnimationFrame(raf);
+      const elapsed = (at - t0) / 1000, diff = elapsed - targets[round];
+      results.push({ target: targets[round], elapsed, diff });
+      state = 'shown'; buzz(Math.abs(diff) < .05 ? [30, 40, 30] : 20);
+      $('lcd').classList.remove('blind'); $('lcd').innerHTML = `${elapsed.toFixed(2)}<small>${String(Math.floor(elapsed * 1000) % 10)}</small>`;
+      const e = Math.abs(diff);
+      $('sub').innerHTML = `${EMOJI(e)} <b>${e.toFixed(3)} s</b> ${diff >= 0 ? 'late' : 'early'}${e < .05 ? '. Unreal.' : ''}`;
+      round++; paintTargets();
+      $('big').classList.remove('stop'); $('big').textContent = round < 3 ? 'NEXT' : 'RESULT';
+    } else if (state === 'shown') {
+      if (round >= 3) return finish();
+      state = 'ready'; setLcd(0, false); $('big').textContent = 'START';
+      $('sub').textContent = round === 2 ? 'Last one. The long one.' : 'The clock goes dark after one second.';
+      paintTargets();
+    }
+  }
+  $('big').addEventListener('pointerdown', e => { e.preventDefault(); press(e); });
+  $('big').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (!e.repeat) press(e); } });
+  document.addEventListener('keydown', e => { if (e.code === 'Space' && document.activeElement !== $('big') && !$('big').hidden && !e.repeat) { e.preventDefault(); press(e); } });
+
+  function finish() {
+    state = 'done';
+    const total = results.reduce((a, r) => a + Math.abs(r.diff), 0);
+    if (mode === 'daily') {
+      const y = new Date(today); y.setDate(y.getDate() - 1);
+      stats.streak = stats.lastDay === ymd(y) ? stats.streak + 1 : 1;
+      stats.played++; stats.sum += total; stats.best = stats.best == null ? total : Math.min(stats.best, total); stats.lastDay = dayKey;
+      store('bs-stats', stats);
+      store('bs-day', { key: dayKey, targets, results });
+    }
+    showSlip();
+  }
+
+  function showSlip() {
+    const total = results.reduce((a, r) => a + Math.abs(r.diff), 0);
+    $('big').hidden = true; $('slip').hidden = false; paintTargets();
+    $('goal').innerHTML = mode === 'daily' ? 'Done for today' : 'Practice done';
+    $('lcd').classList.remove('blind'); $('lcd').innerHTML = `${total.toFixed(2)}<small>${String(Math.round(total * 1000) % 10)}</small>`;
+    $('sub').textContent = 'seconds off in total';
+    $('rating').textContent = RATING(total);
+    $('emo').textContent = results.map(r => EMOJI(Math.abs(r.diff))).join(' ');
+    const avg = stats.played ? (stats.sum / stats.played).toFixed(2) : '–';
+    $('stats').innerHTML = `<div><b>${stats.played}</b><span>Played</span></div><div><b>${stats.streak}</b><span>Streak</span></div><div><b>${stats.best == null ? '–' : stats.best.toFixed(2)}</b><span>Best</span></div><div><b>${avg}</b><span>Average</span></div>`;
+    $('practice').textContent = mode === 'daily' ? 'Practice' : 'Again';
+  }
+
+  $('share').addEventListener('click', async () => {
+    const total = results.reduce((a, r) => a + Math.abs(r.diff), 0);
+    const head = mode === 'daily' ? `Blind Stop #${dayNum} ⏱️` : 'Blind Stop (practice) ⏱️';
+    const text = `${head}\n${results.map(r => EMOJI(Math.abs(r.diff))).join('')}  off by ${total.toFixed(2)}s\n${results.map(r => signed(r.diff)).join(' · ')}\n${RATING(total)}${mode === 'daily' && stats.streak > 1 ? ` · 🔥${stats.streak}` : ''}\n${location.href.split('#')[0]}`;
+    if (navigator.share && /Mobi|Android|iPhone|iPad/.test(navigator.userAgent)) { try { await navigator.share({ text }); return; } catch (e) { if (e.name === 'AbortError') return; } }
+    try { await navigator.clipboard.writeText(text); toast('Copied. Paste it anywhere.'); }
+    catch (e) { const ta = document.createElement('textarea'); ta.value = text; document.body.append(ta); ta.select(); try { document.execCommand('copy'); toast('Copied. Paste it anywhere.'); } catch (err) { toast('Could not copy on this browser.'); } ta.remove(); }
+  });
+  $('practice').addEventListener('click', () => begin('practice'));
+
+  function toast(t) { const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2200); }
+  function buzz(p) { try { navigator.vibrate && navigator.vibrate(p); } catch (e) {} }
+  function tick() {
+    const next = new Date(today); next.setDate(next.getDate() + 1);
+    const s = Math.max(0, Math.floor((next - new Date()) / 1000));
+    $('countdown').textContent = `New targets in ${String(Math.floor(s / 3600)).padStart(2, '0')}:${String(Math.floor(s / 60) % 60).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
+  }
+  setInterval(tick, 1000); tick();
+
+  const saved = load('bs-day', null);
+  if (saved && saved.key === dayKey) { mode = 'daily'; targets = saved.targets; results = saved.results; round = 3; state = 'done'; $('meta').innerHTML = `#${dayNum}<br>played`; showSlip(); }
+  else begin('daily');
+})();
+</script>
+</body>
+</html>
