@@ -2,6 +2,7 @@
 
 Pocket-sized phone games. Open `index.html` to pick a game.
 
+- **Life in Numbers** (`life-in-numbers.html`): an app. Enter your birthday for live life stats (heartbeats, full moons, km around the Sun), upcoming milestones, planet ages and a shareable image card. Runs entirely in the browser.
 - **Plink** (`plink.html`): daily physics + music puzzle. Draw chalk ramps to get a marble into the cup; every bounce plays a note and your solution becomes a tune.
 - **Shadow Play** (`shadow-play.html`): daily 3D puzzle. Rotate a wire sculpture until its shadow matches the outline on the wall; three named shadows a day.
 - **Blind Stop** (`blind-stop.html`): daily. Stop the clock at three exact targets; the digits vanish after one second. Emoji share card.
