@@ -75,8 +75,9 @@
   .shot.done { border-style: solid; border-color: var(--ok); }
   .shot img.thumb { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
   .shot .lbl { position: relative; padding: 8px 10px; background: linear-gradient(transparent, rgba(0,0,0,.72)); color: #fff; font-weight: 700; font-size: .86rem; line-height: 1.2; }
-  .shot:not(.done) .lbl { background: none; color: var(--ink); }
-  .shot svg { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 62%; height: 52%; color: var(--muted); }
+  .shot svg.art { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .shot:not(.done) svg.art { filter: saturate(.85); }
+  .shot .cam { position: absolute; top: 8px; left: 8px; font: 600 .6rem var(--mono); text-transform: uppercase; letter-spacing: .08em; padding: 2px 6px; border-radius: 999px; background: rgba(0,0,0,.55); color: #fff; }
   .shot .req { position: absolute; top: 8px; right: 8px; font: 600 .62rem var(--mono); padding: 2px 6px; border-radius: 999px; background: var(--sig); color: var(--sig-ink); }
   .shot.done .req { background: var(--ok); color: #fff; }
   .shot input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
@@ -156,29 +157,99 @@
   const nf = n => new Intl.NumberFormat().format(Math.round(n));
 
   // ---------- the walkaround ----------
-  // icon: a small line drawing showing where to stand
-  const CAR_SIDE = '<path d="M8 44h84M18 44a7 7 0 1 0 14 0M68 44a7 7 0 1 0 14 0M12 44V34l10-4 10-10h30l12 10 14 3v11" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>';
-  const CAR_FRONT = '<path d="M20 50V30l8-14h44l8 14v20M20 50h12M68 50h12M20 30h60M28 38h8M64 38h8" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>';
-  const CAR_CORNER = '<path d="M14 48V32l10-12h34l14 10h14v18M14 48h10M62 48h24M24 20l6 12h46" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>';
-  const TYRE = '<circle cx="50" cy="30" r="22" fill="none" stroke="currentColor" stroke-width="3"/><circle cx="50" cy="30" r="10" fill="none" stroke="currentColor" stroke-width="3"/><path d="M50 8v6M50 46v6M28 30h6M66 30h6" stroke="currentColor" stroke-width="3"/>';
-  const DASH = '<path d="M14 48a36 36 0 0 1 72 0" fill="none" stroke="currentColor" stroke-width="3"/><path d="M50 48l16-18" stroke="currentColor" stroke-width="3"/><circle cx="26" cy="22" r="3" fill="currentColor"/><circle cx="74" cy="22" r="3" fill="currentColor"/>';
-  const ENGINE = '<path d="M20 22h46v10h10v16H58v6H32v-6H20zM30 22v-6h20v6M76 32h6M14 32h6" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>';
-  const SEAT = '<path d="M34 10h18l-4 30h22l4 14H30z" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>';
-  const BOOT = '<path d="M12 48V28l16-12h44l16 12v20zM12 28h76" fill="none" stroke="currentColor" stroke-width="3" stroke-linejoin="round"/>';
+  // example art for each tile: shaded drawings of a red example car, in a scene (200 x 150, shared gradients in #slDefs)
+  const OUTDOOR = '<rect width="200" height="104" fill="url(#slSky)"/><rect y="104" width="200" height="46" fill="url(#slRoad)"/><path d="M0 104h200" stroke="#fff" stroke-opacity=".25"/><path d="M0 132h40M70 132h40M140 132h40" stroke="#e8e2c8" stroke-opacity=".35" stroke-width="2"/>';
+  const CABIN = '<rect width="200" height="150" fill="url(#slCabin)"/>';
+  const WHEEL = (x, y, rx = 13, ry = 13) => `<ellipse cx="${x}" cy="${y}" rx="${rx + 3}" ry="${ry + 3}" fill="#121315"/><ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="#1d1e21"/><ellipse cx="${x}" cy="${y}" rx="${rx * .62}" ry="${ry * .62}" fill="url(#slRim)"/>` +
+    [0, 72, 144, 216, 288].map(a => `<path d="M${x} ${y}L${(x + Math.cos(a * Math.PI / 180) * rx * .58).toFixed(1)} ${(y + Math.sin(a * Math.PI / 180) * ry * .58).toFixed(1)}" stroke="#7d8287" stroke-width="2"/>`).join('') +
+    `<ellipse cx="${x}" cy="${y}" rx="${rx * .16}" ry="${ry * .16}" fill="#5b6066"/>`;
+  const SHADOW = (cx, w) => `<ellipse cx="${cx}" cy="118" rx="${w}" ry="7" fill="url(#slShadow)"/>`;
+
+  const ART_SIDE = OUTDOOR + SHADOW(100, 86) +
+    '<path d="M18 106V90q2-9 15-11l26-4 20-17q6-5 16-5h38q9 0 15 6l15 15 16 4q8 2 9 11v13z" fill="url(#slPaintV)"/>' +
+    '<path d="M84 62q4-3 11-3h17v16H70z" fill="url(#slGlass)"/><path d="M116 59h18q6 0 10 4l11 12h-39z" fill="url(#slGlass)"/>' +
+    '<path d="M113 77v26M70 78l-2 25" stroke="#5e1414" stroke-width="1.2"/><rect x="96" y="83" width="10" height="2.5" rx="1" fill="#dcdcdc"/><rect x="124" y="83" width="10" height="2.5" rx="1" fill="#dcdcdc"/>' +
+    '<path d="M20 86h12l2 5H20z" fill="#f4f1e6"/><path d="M181 84h-8v6h9z" fill="#c21d1d"/><path d="M30 80q60-6 150 2" stroke="#fff" stroke-opacity=".35" stroke-width="1.5" fill="none"/>' +
+    WHEEL(52, 104) + WHEEL(152, 104);
+
+  const ART_CORNER = (lights) => OUTDOOR + SHADOW(104, 90) +
+    '<path d="M70 104V83l22-17q6-5 16-5h32q8 0 13 6l14 13q13 2 15 10v14z" fill="url(#slPaintV)"/>' +
+    '<path d="M18 106V87q2-8 13-10l39 6v21z" fill="url(#slPaintH)"/>' +
+    '<path d="M31 77l39 6 22-17-34-4z" fill="#b52a2a"/><path d="M58 62l34 4 16-5-32-4z" fill="url(#slGlass)"/>' +
+    '<path d="M96 66l12-4h16v14H90z" fill="url(#slGlass)"/><path d="M128 62h12q6 0 10 4l10 12h-32z" fill="url(#slGlass)"/>' +
+    `<path d="M22 84l16 2-1 6-15-2z" fill="${lights}"/><path d="M50 88l16 2v6l-16-2z" fill="${lights}"/>` +
+    '<rect x="36" y="94" width="18" height="6" rx="1.5" fill="#1a1a1c"/><path d="M80 82q50-6 104 4" stroke="#fff" stroke-opacity=".3" stroke-width="1.5" fill="none"/>' +
+    WHEEL(30, 106, 8, 11) + WHEEL(86, 104, 11, 13) + WHEEL(162, 104, 12, 13);
+
+  const ART_FRONT = (rear) => OUTDOOR + SHADOW(100, 76) +
+    '<path d="M28 110V86q2-9 15-13l14-22q4-6 14-6h58q10 0 14 6l14 22q13 4 15 13v24z" fill="url(#slPaintH)"/>' +
+    '<path d="M62 52q3-4 10-4h56q7 0 10 4l11 19H51z" fill="url(#slGlass)"/><path d="M40 72h120" stroke="#fff" stroke-opacity=".3"/>' +
+    (rear
+      ? '<path d="M34 80l26 2-2 9-24-2z" fill="#c21d1d"/><path d="M166 80l-26 2 2 9 24-2z" fill="#c21d1d"/><rect x="82" y="88" width="36" height="10" rx="1.5" fill="#f2f2ee" stroke="#333" stroke-width=".8"/><text x="100" y="95.6" font-size="6.5" text-anchor="middle" font-family="monospace" fill="#222">AB 123 C</text><rect x="44" y="104" width="10" height="4" rx="2" fill="#555"/>'
+      : '<path d="M34 80l26 2-2 9-24-2z" fill="#f4f1e6"/><path d="M166 80l-26 2 2 9 24-2z" fill="#f4f1e6"/><rect x="72" y="83" width="56" height="12" rx="3" fill="#1b1b1e"/><path d="M76 87h48M76 91h48" stroke="#3a3a40"/><rect x="86" y="98" width="28" height="7" rx="1" fill="#f2f2ee"/>') +
+    '<rect x="32" y="102" width="136" height="7" rx="3" fill="#7d1a1a"/><rect x="32" y="106" width="18" height="15" rx="3" fill="#18191b"/><rect x="150" y="106" width="18" height="15" rx="3" fill="#18191b"/>' +
+    '<path d="M40 70l-8-2v6h8z" fill="#9e2121"/><path d="M160 70l8-2v6h-8z" fill="#9e2121"/>';
+
+  const ART_TYRE = '<rect width="200" height="150" fill="#2a2b2e"/><path d="M0 0h200v30q-100-22-200 0z" fill="#8e1f1f"/><rect y="132" width="200" height="18" fill="url(#slRoad)"/>' +
+    '<rect x="46" y="22" width="108" height="124" rx="22" fill="#1b1c1e"/><rect x="58" y="22" width="84" height="124" fill="#232427"/>' +
+    [76, 100, 124].map(x => `<rect x="${x - 2.5}" y="22" width="5" height="124" fill="#0e0e10"/>`).join('') +
+    Array.from({ length: 9 }, (_, i) => `<path d="M60 ${30 + i * 13}l14 6M86 ${33 + i * 13}l12-5M104 ${30 + i * 13}l12 6M128 ${33 + i * 13}l12-5" stroke="#0e0e10" stroke-width="2"/>`).join('') +
+    '<path d="M46 40q-6 44 0 88M154 40q6 44 0 88" stroke="#3a3b3f" stroke-width="3" fill="none"/>';
+
+  const ART_ENGINE = '<rect width="200" height="150" fill="#2e3034"/><path d="M0 0h200v18H0z" fill="#c9cdd2"/><path d="M0 0h200v6H0z" fill="#9aa0a6"/><path d="M0 18h14v132H0zM186 18h14v132h-14z" fill="url(#slPaintV)"/>' +
+    '<rect x="62" y="44" width="78" height="64" rx="8" fill="#3f4248"/><rect x="66" y="48" width="70" height="56" rx="6" fill="#4a4e55"/>' +
+    [56, 66, 76, 86, 96].map(y => `<path d="M74 ${y}h54" stroke="#3a3d43" stroke-width="3"/>`).join('') +
+    '<circle cx="101" cy="98" r="5" fill="#e0b52b"/><rect x="22" y="70" width="32" height="34" rx="3" fill="#141416"/><circle cx="29" cy="68" r="3" fill="#c22"/><circle cx="47" cy="68" r="3" fill="#222" stroke="#666"/>' +
+    '<rect x="148" y="34" width="26" height="32" rx="6" fill="#ddd6c4" fill-opacity=".9"/><rect x="148" y="48" width="26" height="18" rx="4" fill="#e889a7" fill-opacity=".8"/><circle cx="161" cy="34" r="5" fill="#222"/>' +
+    '<rect x="150" y="84" width="22" height="30" rx="5" fill="#d9dde3" fill-opacity=".85"/><circle cx="161" cy="84" r="4.5" fill="#2b6fd6"/><circle cx="34" cy="38" r="9" fill="#55595f"/><circle cx="168" cy="128" r="9" fill="#55595f"/>' +
+    '<path d="M62 120q40 10 78 0" stroke="#111" stroke-width="4" fill="none"/>';
+
+  const CLUSTER = '<rect x="20" y="22" width="160" height="92" rx="40" fill="#0f1012"/><rect x="24" y="26" width="152" height="84" rx="36" fill="#17181b"/>' +
+    [[64, 66], [136, 66]].map(([cx, cy]) => `<circle cx="${cx}" cy="${cy}" r="30" fill="#0b0b0d" stroke="#3a3c42" stroke-width="2"/>` +
+      Array.from({ length: 11 }, (_, i) => { const a = (135 + i * 27) * Math.PI / 180; return `<path d="M${(cx + Math.cos(a) * 24).toFixed(1)} ${(cy + Math.sin(a) * 24).toFixed(1)}L${(cx + Math.cos(a) * 28).toFixed(1)} ${(cy + Math.sin(a) * 28).toFixed(1)}" stroke="#e9e9ea" stroke-width="1.4"/>`; }).join('') +
+      `<path d="M${cx} ${cy}L${cx - 18} ${cy + 10}" stroke="#ff5b2e" stroke-width="2.2"/><circle cx="${cx}" cy="${cy}" r="3" fill="#888"/>`).join('');
+  const ART_DASH = CABIN + '<rect x="0" y="0" width="200" height="16" fill="#24262a"/>' + CLUSTER +
+    '<rect x="88" y="54" width="24" height="26" rx="3" fill="#0a2a33"/><text x="100" y="70" font-size="7" text-anchor="middle" fill="#7fe3ff" font-family="monospace">21°</text>' +
+    '<path d="M93 92h6v4h-6zM103 91l3 6h-6z" fill="#f2a516" fill-opacity=".9"/>' +
+    '<path d="M30 150q70-62 140 0" stroke="#1b1c1f" stroke-width="16" fill="none"/>';
+  const ART_ODO = CABIN + '<rect x="14" y="26" width="172" height="98" rx="14" fill="#0e0f11" stroke="#2c2e33" stroke-width="2"/>' +
+    '<rect x="30" y="52" width="140" height="44" rx="6" fill="#0a1e14"/><text x="100" y="82" font-size="22" text-anchor="middle" fill="#9dffb8" font-family="monospace" letter-spacing="2">084213</text>' +
+    '<text x="160" y="92" font-size="7" text-anchor="end" fill="#9dffb8" font-family="monospace">km</text><text x="38" y="62" font-size="6" fill="#5fa877" font-family="monospace">ODO</text>' +
+    '<text x="100" y="114" font-size="7" text-anchor="middle" fill="#6b6f77" font-family="monospace">TRIP A  312.4</text>';
+  const ART_SEAT = CABIN + '<rect x="0" y="0" width="58" height="150" fill="#2a2c31"/><rect x="8" y="60" width="40" height="8" rx="3" fill="#3a3d43"/>' +
+    '<path d="M96 28q-4-10 8-12l20-2q10 0 10 10l-6 70H98z" fill="#3b3e45"/><rect x="104" y="6" width="26" height="16" rx="6" fill="#3b3e45"/>' +
+    '<path d="M98 94h44q14 0 16 12v10H96z" fill="#34373d"/><path d="M104 34q12-4 22 0M103 52q12-4 22 0M102 70q12-4 22 0" stroke="#2c2f35" stroke-width="2" fill="none"/>' +
+    '<rect x="122" y="116" width="10" height="34" fill="#202226"/><ellipse cx="74" cy="64" rx="13" ry="30" fill="none" stroke="#141518" stroke-width="7"/><path d="M74 64l-30 26" stroke="#141518" stroke-width="7"/>';
+  const ART_BOOT = OUTDOOR + '<path d="M18 120V70q2-10 14-12h136q12 2 14 12v50z" fill="url(#slPaintH)"/><path d="M30 18h140l10 40H20z" fill="url(#slPaintV)"/><path d="M40 22h120l6 24H34z" fill="url(#slGlass)"/>' +
+    '<path d="M30 66h140v46H30z" fill="#26282c"/><path d="M30 66h140l-12 10H42z" fill="#1d1f22"/><ellipse cx="112" cy="94" rx="30" ry="12" fill="#121315"/><ellipse cx="112" cy="94" rx="20" ry="7" fill="#2f3237"/>' +
+    '<path d="M32 112l44-36 22 4-34 32z" fill="#3c3f45"/><path d="M76 76l22 4" stroke="#55595f" stroke-width="2"/><path d="M40 70l-6-4M160 70l6-4" stroke="#8a8f94" stroke-width="2"/>';
+  const ART_DEFS = '<svg id="slDefs" width="0" height="0" style="position:absolute" aria-hidden="true"><defs>' +
+    '<linearGradient id="slSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#a9c3d6"/><stop offset="1" stop-color="#e7edf0"/></linearGradient>' +
+    '<linearGradient id="slRoad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6d7176"/><stop offset="1" stop-color="#45484c"/></linearGradient>' +
+    '<linearGradient id="slCabin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2b2d31"/><stop offset="1" stop-color="#121316"/></linearGradient>' +
+    '<linearGradient id="slPaintV" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e2524f"/><stop offset=".45" stop-color="#c52a2a"/><stop offset="1" stop-color="#6e1515"/></linearGradient>' +
+    '<linearGradient id="slPaintH" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8e1d1d"/><stop offset=".5" stop-color="#d84141"/><stop offset="1" stop-color="#8e1d1d"/></linearGradient>' +
+    '<linearGradient id="slGlass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#9fb4c3"/><stop offset=".45" stop-color="#3f505e"/><stop offset="1" stop-color="#1f2a33"/></linearGradient>' +
+    '<radialGradient id="slRim" cx=".4" cy=".35" r=".7"><stop offset="0" stop-color="#f1f3f5"/><stop offset="1" stop-color="#868b91"/></radialGradient>' +
+    '<radialGradient id="slShadow"><stop offset="0" stop-color="#000" stop-opacity=".55"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient>' +
+    '</defs></svg>';
+  document.body.insertAdjacentHTML('afterbegin', ART_DEFS);
+  const MIRROR = art => `<g transform="translate(200 0) scale(-1 1)">${art}</g>`;
+
   const SHOTS = [
-    { id: 'front', label: 'Front, straight on', tip: 'Stand 3 m back, centred. Headlights, bumper and bonnet line all in frame.', req: true, icon: CAR_FRONT },
-    { id: 'front_left', label: 'Front-left corner', tip: 'Crouch a little at the corner so the side catches the light. Paint differences show up here.', req: true, icon: CAR_CORNER },
-    { id: 'left_side', label: 'Left side', tip: 'Shoot along the side at a low angle. Look for ripples in the reflection.', req: false, icon: CAR_SIDE },
-    { id: 'rear', label: 'Rear, straight on', tip: 'Boot lid, bumper and lights in frame.', req: false, icon: CAR_FRONT },
-    { id: 'rear_right', label: 'Rear-right corner', tip: 'Same as the front corner, from the back.', req: true, icon: CAR_CORNER },
-    { id: 'right_side', label: 'Right side', tip: 'Low angle along the side, so panel gaps show.', req: false, icon: CAR_SIDE },
-    { id: 'tyre_front', label: 'Front tyre tread', tip: 'Turn the wheel and shoot the tread close up, edge to edge.', req: false, icon: TYRE },
-    { id: 'tyre_rear', label: 'Rear tyre tread', tip: 'Close up on the tread across its full width.', req: false, icon: TYRE },
-    { id: 'engine', label: 'Engine bay', tip: 'Bonnet open, whole engine bay from above, in good light.', req: true, icon: ENGINE },
-    { id: 'dash', label: 'Dashboard, engine running', tip: 'Start the car first. All warning lights should go out after a few seconds.', req: true, icon: DASH },
-    { id: 'odometer', label: 'Odometer close-up', tip: 'Fill the frame with the mileage. Make sure the digits are sharp.', req: true, icon: DASH },
-    { id: 'interior', label: 'Driver seat & wheel', tip: 'Wear on the seat, wheel and pedals should match the mileage.', req: false, icon: SEAT },
-    { id: 'boot', label: 'Boot floor, mat lifted', tip: 'Lift the mat. Rust, water or a crumpled floor are bad signs.', req: false, icon: BOOT },
+    { id: 'front', label: 'Front, straight on', tip: 'Stand 3 m back, centred. Headlights, bumper and bonnet line all in frame.', req: true, icon: ART_FRONT(false) },
+    { id: 'front_left', label: 'Front-left corner', tip: 'Crouch a little at the corner so the side catches the light. Paint differences show up here.', req: true, icon: ART_CORNER('#f4f1e6') },
+    { id: 'left_side', label: 'Left side', tip: 'Shoot along the side at a low angle. Look for ripples in the reflection.', req: false, icon: ART_SIDE },
+    { id: 'rear', label: 'Rear, straight on', tip: 'Boot lid, bumper and lights in frame.', req: false, icon: ART_FRONT(true) },
+    { id: 'rear_right', label: 'Rear-right corner', tip: 'Same as the front corner, from the back.', req: true, icon: MIRROR(ART_CORNER('#c21d1d')) },
+    { id: 'right_side', label: 'Right side', tip: 'Low angle along the side, so panel gaps show.', req: false, icon: MIRROR(ART_SIDE) },
+    { id: 'tyre_front', label: 'Front tyre tread', tip: 'Turn the wheel and shoot the tread close up, edge to edge.', req: false, icon: ART_TYRE },
+    { id: 'tyre_rear', label: 'Rear tyre tread', tip: 'Close up on the tread across its full width.', req: false, icon: ART_TYRE },
+    { id: 'engine', label: 'Engine bay', tip: 'Bonnet open, whole engine bay from above, in good light.', req: true, icon: ART_ENGINE },
+    { id: 'dash', label: 'Dashboard, engine running', tip: 'Start the car first. All warning lights should go out after a few seconds.', req: true, icon: ART_DASH },
+    { id: 'odometer', label: 'Odometer close-up', tip: 'Fill the frame with the mileage. Make sure the digits are sharp.', req: true, icon: ART_ODO },
+    { id: 'interior', label: 'Driver seat & wheel', tip: 'Wear on the seat, wheel and pedals should match the mileage.', req: false, icon: ART_SEAT },
+    { id: 'boot', label: 'Boot floor, mat lifted', tip: 'Lift the mat. Rust, water or a crumpled floor are bad signs.', req: false, icon: ART_BOOT },
   ];
 
   // bad answer -> flag; "unsure" -> something to verify
@@ -304,7 +375,7 @@
       <p class="hint">${got} of ${SHOTS.length} photos · ${reqLeft ? `${reqLeft} required left` : 'all required photos done'}</p>
       <div class="shots">${SHOTS.map(s => `
         <label class="shot${check.photos[s.id] ? ' done' : ''}" title="${esc(s.tip)}">
-          ${check.photos[s.id] ? `<img class="thumb" src="${check.photos[s.id]}" alt="">` : `<svg viewBox="0 0 100 60" aria-hidden="true">${s.icon}</svg>`}
+          ${check.photos[s.id] ? `<img class="thumb" src="${check.photos[s.id]}" alt="">` : `<svg class="art" viewBox="0 0 200 150" preserveAspectRatio="xMidYMid slice" aria-hidden="true">${s.icon}</svg><span class="cam" aria-hidden="true">Example</span>`}
           ${s.req || check.photos[s.id] ? `<span class="req">${check.photos[s.id] ? '✓' : 'Required'}</span>` : ''}
           <span class="lbl">${esc(s.label)}</span>
           <input type="file" accept="image/*" capture="environment" data-shot="${s.id}" aria-label="${esc(s.label)}: ${esc(s.tip)}">
