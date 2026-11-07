@@ -3,359 +3,208 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#111416">
-<title>Pocket Arcade</title>
+<title>Quizloop</title>
+<meta name="description" content="Quiz funnels built for Meta advertisers. Turn ad clicks into leads and sales with a 60-second quiz.">
+<meta property="og:title" content="Quizloop: quiz funnels for Meta ads">
+<meta property="og:description" content="Turn ad clicks into leads and sales with a 60-second quiz. Meta Pixel events built in.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bungee&family=IBM+Plex+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
 <style>
-  /* Layout: a stack of game cards, one per motion game; each card shows the sensor it uses. */
+  /* Layout: hero with a live, playable quiz on a phone; how-it-works strip; feature list; pricing; waitlist. */
   :root {
-    --bg: #111416;
-    --ink: #f2ede3;
-    --muted: #9aa3a0;
-    --fizz: #e8402c;
-    --fizz-ground: #0d1714;
-    --maze: #e2b45a;
-    --maze-ground: #1b130c;
-    --drop: #ff5a36;
-    --drop-ground: #15132e;
-    --pour: #d9824a;
-    --pour-ground: #14201f;
-    --ward: #d0453a;
-    --ward-ground: #0c0d0b;
-    --swing: #ffd166;
-    --swing-ground: #1a1233;
-    --lyric: #ff3d7f;
-    --lyric-ground: #0c0b10;
-    --gty: #e0a526;
-    --gty-ground: #16302b;
-    --ol: #ff6a52;
-    --ol-ground: #1b2a4a;
-    --bs: #ff6b33;
-    --bs-ground: #191916;
-    --sp: #e7b65a;
-    --sp-ground: #1d1611;
-    --pl: #ff9fb8;
-    --pl-ground: #1f3a30;
-    --lin: #ff6f59;
-    --lin-ground: #10162f;
-    --display: "Bungee", "Impact", "Arial Black", sans-serif;
-    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-    color-scheme: dark;
+    --bg: #f6f4ef; --panel: #ffffff; --ink: #16181d; --muted: #5f636d; --line: #e4e1d8; --soft: #efede6;
+    --brand: #ff4d2e; --mint: #1fb58f;
+    --display: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
+    --body: "Figtree", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
   }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0f1013; --panel: #17191e; --ink: #f2f1ed; --muted: #a1a6b0; --line: #2a2d34; --soft: #1e2127; --brand: #ff6247; --mint: #33d1a6; color-scheme: dark; } }
+  :root[data-theme="dark"] { --bg: #0f1013; --panel: #17191e; --ink: #f2f1ed; --muted: #a1a6b0; --line: #2a2d34; --soft: #1e2127; --brand: #ff6247; --mint: #33d1a6; color-scheme: dark; }
   * { box-sizing: border-box; }
-  html, body { margin: 0; min-height: 100%; }
-  body {
-    background: var(--bg); color: var(--ink); font-family: var(--mono);
-    padding: max(24px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
-  }
-  main { max-width: 520px; margin: 0 auto; display: flex; flex-direction: column; gap: 18px; }
-  h1 { font-family: var(--display); font-size: clamp(2rem, 9vw, 2.8rem); margin: 0; line-height: 1; }
-  .lede { margin: 0; color: var(--muted); line-height: 1.5; font-size: .92rem; }
-  .card {
-    display: grid; grid-template-columns: 96px 1fr; gap: 16px; align-items: center;
-    padding: 16px; border-radius: 18px; text-decoration: none; color: var(--ink);
-    border: 2px solid transparent; transition: transform .12s, border-color .12s;
-  }
-  .card:hover, .card:focus-visible { transform: translateY(-2px); border-color: var(--accent); outline: none; }
-  .card:active { transform: translateY(1px); }
-  .card.fizz { background: var(--fizz-ground); --accent: var(--fizz); }
-  .card.maze { background: var(--maze-ground); --accent: var(--maze); }
-  .card.ward { background: var(--ward-ground); --accent: var(--ward); border-color: #262922; }
-  .card.lin { background: var(--lin-ground); --accent: var(--lin); }
-  .card.pl { background: var(--pl-ground); --accent: var(--pl); }
-  .card.sp { background: var(--sp-ground); --accent: var(--sp); }
-  .card.bs { background: var(--bs-ground); --accent: var(--bs); }
-  .card.ol { background: var(--ol-ground); --accent: var(--ol); }
-  .card.gty { background: var(--gty-ground); --accent: var(--gty); }
-  .card.lyric { background: var(--lyric-ground); --accent: var(--lyric); border-color: #2a2833; }
-  .card.swing { background: var(--swing-ground); --accent: var(--swing); }
-  .card.pour { background: var(--pour-ground); --accent: var(--pour); }
-  .card.drop { background: var(--drop-ground); --accent: var(--drop); }
-  .card canvas { width: 96px; height: 96px; display: block; }
-  .card div { min-width: 0; display: flex; flex-direction: column; gap: 6px; }
-  .card h2 { font-family: var(--display); font-size: 1.35rem; margin: 0; color: var(--accent); }
-  .card p { margin: 0; font-size: .85rem; line-height: 1.45; }
-  .chip { align-self: flex-start; font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--accent); color: var(--accent); }
-  .best { font-size: .72rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-  footer { color: var(--muted); font-size: .75rem; line-height: 1.5; }
-  @media (prefers-reduced-motion: reduce) { .card { transition: none; } }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  nav { display: flex; align-items: center; gap: 16px; padding-block: max(14px, env(safe-area-inset-top, 0px)) 14px; }
+  .logo { font-family: var(--display); font-weight: 800; font-size: 1.35rem; letter-spacing: -.03em; display: flex; align-items: center; gap: 7px; color: var(--ink); text-decoration: none; }
+  .logo i { width: 20px; height: 20px; border-radius: 50%; border: 5px solid var(--brand); border-right-color: transparent; display: inline-block; transform: rotate(-30deg); }
+  nav .sp { flex: 1; }
+  nav a.l { color: var(--muted); text-decoration: none; font-weight: 600; font-size: .92rem; }
+  @media (max-width: 560px) { nav a.l { display: none; } }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; font: 700 .98rem var(--body); padding: 13px 20px; border-radius: 12px; text-decoration: none; cursor: pointer; border: 1.5px solid var(--ink); color: var(--ink); background: transparent; }
+  .btn.solid { background: var(--brand); border-color: var(--brand); color: #fff; box-shadow: 0 10px 24px -12px var(--brand); }
+  .btn.sm { padding: 9px 14px; font-size: .88rem; }
+  .btn:focus-visible, input:focus-visible { outline: 3px solid color-mix(in srgb, var(--brand) 50%, transparent); outline-offset: 2px; }
+  .hero { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); gap: 40px; align-items: center; padding-block: 28px 56px; }
+  @media (max-width: 860px) { .hero { grid-template-columns: minmax(0, 1fr); padding-top: 12px; } }
+  .eyebrow { display: inline-flex; gap: 8px; align-items: center; font: 600 .8rem var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; background: var(--panel); }
+  .eyebrow b { width: 8px; height: 8px; border-radius: 50%; background: var(--mint); }
+  h1 { font-family: var(--display); font-weight: 800; font-size: clamp(2.4rem, 6.4vw, 4.2rem); line-height: .98; letter-spacing: -.035em; margin: 18px 0 16px; text-wrap: balance; }
+  h1 em { font-style: normal; color: var(--brand); }
+  .lede { font-size: 1.15rem; color: var(--muted); max-width: 46ch; margin: 0 0 24px; }
+  .ctas { display: flex; gap: 10px; flex-wrap: wrap; }
+  .proof { margin-top: 22px; font-size: .86rem; color: var(--muted); display: flex; gap: 18px; flex-wrap: wrap; }
+  .proof span::before { content: "✓ "; color: var(--mint); font-weight: 700; }
+  .demo { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .phone { width: min(100%, 360px); height: 640px; border-radius: 40px; border: 11px solid #111; background: #111; overflow: hidden; box-shadow: 0 40px 80px -40px rgba(0,0,0,.55); }
+  .phone > div { width: 100%; height: 100%; overflow-y: auto; border-radius: 29px; }
+  .phone .qlp { min-height: 100%; }
+  .ping { font: 600 .8rem var(--mono); color: var(--muted); min-height: 1.4em; text-align: center; }
+  .ping b { color: var(--brand); }
+  section { padding-block: 56px; border-top: 1px solid var(--line); }
+  h2 { font-family: var(--display); font-weight: 800; font-size: clamp(1.8rem, 4.4vw, 2.6rem); letter-spacing: -.03em; line-height: 1.05; margin: 0 0 10px; text-wrap: balance; }
+  .sub { color: var(--muted); margin: 0 0 30px; max-width: 58ch; }
+  .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 760px) { .steps { grid-template-columns: minmax(0, 1fr); } }
+  .step { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: 20px; }
+  .step .n { font: 700 .8rem var(--mono); color: var(--brand); }
+  .step h3 { font-family: var(--display); font-size: 1.25rem; margin: 6px 0; }
+  .step p { margin: 0; color: var(--muted); font-size: .95rem; }
+  .feat { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 40px; }
+  @media (max-width: 760px) { .feat { grid-template-columns: minmax(0, 1fr); } }
+  .feat div { padding: 16px 0; border-bottom: 1px dashed var(--line); }
+  .feat b { display: block; font-family: var(--display); font-size: 1.1rem; margin-bottom: 2px; }
+  .feat span { color: var(--muted); font-size: .95rem; }
+  .feat .soon { font: 600 .7rem var(--mono); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: middle; }
+  .events { margin-top: 26px; background: var(--ink); color: var(--bg); border-radius: 16px; padding: 18px 20px; font: 500 .86rem var(--mono); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; max-width: 560px; }
+  .events em { font-style: normal; color: var(--brand); text-align: right; }
+  .prices { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: stretch; }
+  @media (max-width: 860px) { .prices { grid-template-columns: minmax(0, 1fr); } }
+  .price { background: var(--panel); border: 1px solid var(--line); border-radius: 18px; padding: 22px; display: flex; flex-direction: column; gap: 12px; }
+  .price.hot { border: 2px solid var(--brand); }
+  .price h3 { margin: 0; font-family: var(--display); font-size: 1.3rem; display: flex; justify-content: space-between; align-items: center; }
+  .price h3 small { font: 600 .7rem var(--mono); color: #fff; background: var(--brand); border-radius: 999px; padding: 3px 8px; }
+  .amt { font-family: var(--display); font-weight: 800; font-size: 2.4rem; line-height: 1; letter-spacing: -.03em; }
+  .amt span { font-size: 1rem; color: var(--muted); font-weight: 600; }
+  .price ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; font-size: .94rem; flex: 1; }
+  .price li::before { content: "✓ "; color: var(--mint); font-weight: 700; }
+  .wl { background: var(--panel); border: 1px solid var(--line); border-radius: 22px; padding: 28px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: center; }
+  @media (max-width: 760px) { .wl { grid-template-columns: minmax(0, 1fr); } }
+  .wl form { display: flex; gap: 8px; flex-wrap: wrap; }
+  .wl input { flex: 1 1 220px; min-width: 0; font: 500 1rem var(--body); padding: 13px 14px; border-radius: 12px; border: 1.5px solid var(--line); background: var(--bg); color: var(--ink); }
+  .wl .msg { width: 100%; font-size: .9rem; color: var(--mint); font-weight: 600; min-height: 1.4em; margin: 4px 0 0; }
+  footer { padding-block: 30px max(30px, env(safe-area-inset-bottom, 0px)); color: var(--muted); font-size: .85rem; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
 </style>
 </head>
 <body>
-<main>
-  <h1>POCKET ARCADE</h1>
-  <p class="lede">Pocket-sized games and toys for your phone. Pick one.</p>
+<div class="wrap">
+  <nav>
+    <a class="logo" href="index.html"><i aria-hidden="true"></i>Quizloop</a>
+    <span class="sp"></span>
+    <a class="l" href="#how">How it works</a>
+    <a class="l" href="#pricing">Pricing</a>
+    <a class="btn sm" href="app.html">Open the builder</a>
+  </nav>
 
-  <a class="card lin" href="life-in-numbers.html">
-    <canvas id="iconLin" width="192" height="192"></canvas>
+  <header class="hero">
     <div>
-      <span class="chip">App · Share card</span>
-      <h2>Life in Numbers</h2>
-      <p>Your birthday becomes live counters: heartbeats, full moons, kilometres around the Sun, and the date you turn 10,000 days old.</p>
+      <span class="eyebrow"><b></b>Built for Meta advertisers</span>
+      <h1>Stop paying for clicks that <em>don’t buy</em>.</h1>
+      <p class="lede">Send your ad traffic to a 60-second quiz instead of a product page. Visitors get a personal recommendation, you get their email and a sale. Every step reports back to your Meta Pixel.</p>
+      <div class="ctas">
+        <a class="btn solid" href="app.html">Build your first funnel free</a>
+        <a class="btn" href="#waitlist">Get early access</a>
+      </div>
+      <div class="proof"><span>No code</span><span>Meta Pixel events built in</span><span>Live in 10 minutes</span></div>
     </div>
-  </a>
-
-  <a class="card pl" href="plink.html">
-    <canvas id="iconPl" width="192" height="192"></canvas>
-    <div>
-      <span class="chip">Daily · Physics + music</span>
-      <h2>Plink</h2>
-      <p>Draw chalk ramps to guide a marble into the cup. Every bounce plays a note, so every solution is a little song.</p>
-      <span class="best" id="bestPl"></span>
+    <div class="demo">
+      <div class="phone"><div id="demo" aria-label="Live example quiz"></div></div>
+      <div class="ping" id="ping">Try it. This is a real funnel built with Quizloop.</div>
     </div>
-  </a>
+  </header>
 
-  <a class="card sp" href="shadow-play.html">
-    <canvas id="iconSp" width="192" height="192"></canvas>
-    <div>
-      <span class="chip">Daily · 3D puzzle</span>
-      <h2>Shadow Play</h2>
-      <p>Twist a wire sculpture in front of a lamp until its shadow fills the shape on the wall. Every shadow has a name.</p>
-      <span class="best" id="bestSp"></span>
+  <section id="how">
+    <h2>From ad click to sale in three steps</h2>
+    <p class="sub">Quizzes work because people love finding out something about themselves. By the time they see your offer, it’s already personal.</p>
+    <div class="steps">
+      <div class="step"><div class="n">01</div><h3>Pick a template</h3><p>Product finder, lead quiz for coaches, plan picker. Change every question and answer to match your offer.</p></div>
+      <div class="step"><div class="n">02</div><h3>Connect your Pixel</h3><p>Paste your Meta Pixel ID once. Quiz finishes, leads and checkout clicks flow into Ads Manager automatically.</p></div>
+      <div class="step"><div class="n">03</div><h3>Run your ad to the link</h3><p>Publish, copy the link, use it as the ad’s website URL. Leads land in your CRM through a webhook.</p></div>
     </div>
-  </a>
+  </section>
 
-  <a class="card bs" href="blind-stop.html">
-    <canvas id="iconBs" width="192" height="192"></canvas>
-    <div>
-      <span class="chip">Daily · Shareable</span>
-      <h2>Blind Stop</h2>
-      <p>Stop the clock at the exact time. The digits go dark after one second. Three targets a day.</p>
-      <span class="best" id="bestBs"></span>
+  <section>
+    <h2>Made for people who live in Ads Manager</h2>
+    <p class="sub">Other builders treat tracking as an afterthought. Here it’s the point.</p>
+    <div class="feat">
+      <div><b>Optimise for leads, not clicks</b><span>Each funnel step fires a standard Meta event, so the algorithm finds people who finish and buy.</span></div>
+      <div><b>A result for every buyer</b><span>Each answer points to a result. Each result has its own offer, price and checkout link.</span></div>
+      <div><b>Sell straight from the result</b><span>Link a Stripe payment link, Shopify product or booking page to each result’s button.</span></div>
+      <div><b>Leads go where you work</b><span>Every email arrives with the quiz result, answers and UTM tags at your webhook: Zapier, Make, your CRM.</span></div>
+      <div><b>Mobile-first, fast</b><span>Meta traffic is 90% phones. Funnels load instantly and feel like an app.</span></div>
+      <div><b>AI writes your quiz<span class="soon">Coming soon</span></b><span>Paste a product page and get a complete funnel with questions, results and offers.</span></div>
+      <div><b>Server-side tracking<span class="soon">Coming soon</span></b><span>Meta Conversions API, so iOS privacy settings don’t hide your results.</span></div>
+      <div><b>Drop-off analytics<span class="soon">Coming soon</span></b><span>See which question loses people and which result sells best.</span></div>
     </div>
-  </a>
-
-  <a class="card ol" href="one-line.html">
-    <canvas id="iconOl" width="192" height="192"></canvas>
-    <div>
-      <span class="chip">Daily · Shareable</span>
-      <h2>One Line</h2>
-      <p>One shape a day. It vanishes the moment you touch it. Trace it from memory in one stroke. One try.</p>
-      <span class="best" id="bestOl"></span>
+    <div class="events" aria-label="Events sent to Meta">
+      <span>Quiz finished</span><em>CompleteRegistration</em>
+      <span>Email captured</span><em>Lead</em>
+      <span>Offer clicked</span><em>InitiateCheckout</em>
+      <span>Every step</span><em>Quiz_* custom</em>
     </div>
-  </a>
+  </section>
 
-  <a class="card gty" href="guess-the-year.html">
-    <canvas id="iconGty" width="192" height="192"></canvas>
-    <div>
-      <span class="chip">Daily · Shareable</span>
-      <h2>Guess the Year</h2>
-      <p>Five mystery years a day, a few clues each. Fewer clues, more points. Share your emoji score.</p>
-      <span class="best" id="bestGty"></span>
+  <section id="pricing">
+    <h2>Simple pricing</h2>
+    <p class="sub">Free while in early access. Waitlist members keep a launch discount.</p>
+    <div class="prices">
+      <div class="price"><h3>Starter</h3><div class="amt">$29<span>/mo</span></div><ul><li>3 live funnels</li><li>Meta Pixel events</li><li>Lead webhook</li><li>All templates</li></ul><a class="btn" href="#waitlist">Join waitlist</a></div>
+      <div class="price hot"><h3>Pro <small>Most picked</small></h3><div class="amt">$79<span>/mo</span></div><ul><li>Unlimited funnels</li><li>Conversions API</li><li>AI quiz writer</li><li>A/B tests &amp; drop-off analytics</li><li>Remove Quizloop badge</li></ul><a class="btn solid" href="#waitlist">Join waitlist</a></div>
+      <div class="price"><h3>Agency</h3><div class="amt">$199<span>/mo</span></div><ul><li>Everything in Pro</li><li>Client workspaces</li><li>Your own domain</li><li>Client-ready reports</li></ul><a class="btn" href="#waitlist">Join waitlist</a></div>
     </div>
-  </a>
+  </section>
 
-  <a class="card lyric" href="lyric-motion.html">
-    <canvas id="iconLyric" width="192" height="192"></canvas>
-    <div>
-      <span class="chip">Studio · Not a game</span>
-      <h2>Lyric Motion</h2>
-      <p>Paste song lyrics and get a music-clip style kinetic text animation. Load the song to sync it, then record the clip.</p>
+  <section id="waitlist">
+    <div class="wl">
+      <div>
+        <h2>Get early access</h2>
+        <p class="sub" style="margin:0">Join the waitlist for the full launch and lock in 40% off your first year.</p>
+      </div>
+      <form id="wlForm" novalidate>
+        <input type="email" id="wlEmail" placeholder="you@business.com" autocomplete="email" aria-label="Email" required>
+        <button class="btn solid" type="submit">Join the waitlist</button>
+        <p class="msg" id="wlMsg" aria-live="polite"></p>
+      </form>
     </div>
-  </a>
+  </section>
 
-  <a class="card ward" href="ward-nine.html">
-    <canvas id="iconWard" width="192" height="192"></canvas>
-    <div>
-      <span class="chip">Survival horror · Roguelite</span>
-      <h2>Ward Nine</h2>
-      <p>Flashlight, a pistol and not enough bullets. Find the keycard, reach the elevator, go deeper. Pick an upgrade after every floor.</p>
-      <span class="best" id="bestWard"></span>
-    </div>
-  </a>
+  <footer><span>© Quizloop</span><span><a href="app.html" style="color:inherit">Builder</a></span></footer>
+</div>
 
-  <a class="card swing" href="swing-line.html">
-    <canvas id="iconSwing" width="192" height="192"></canvas>
-    <div>
-      <span class="chip">One touch · Endless</span>
-      <h2>Swing Line</h2>
-      <p>Hold to hook, let go to fly across a night city. Perfect releases chain into speed boosts.</p>
-      <span class="best" id="bestSwing"></span>
-    </div>
-  </a>
-
-  <a class="card drop" href="drop-zone.html">
-    <canvas id="iconDrop" width="192" height="192"></canvas>
-    <div>
-      <span class="chip">Tilt · Endless</span>
-      <h2>Drop Zone</h2>
-      <p>Steer a falling ball through the gaps as the floors rise. Chain drops for multipliers and unlock new balls.</p>
-      <span class="best" id="bestDrop"></span>
-    </div>
-  </a>
-
-  <a class="card pour" href="pour-master.html">
-    <canvas id="iconPour" width="192" height="192"></canvas>
-    <div>
-      <span class="chip">Tilt · Endless</span>
-      <h2>Pour Master</h2>
-      <p>Tip the bottle by tilting your phone and fill each passing glass right to the line. Perfect pours stack a streak.</p>
-      <span class="best" id="bestPour"></span>
-    </div>
-  </a>
-
-  <a class="card fizz" href="fizz-bomb.html">
-    <canvas id="iconFizz" width="192" height="192"></canvas>
-    <div>
-      <span class="chip">Shake</span>
-      <h2>Fizz Bomb</h2>
-      <p>Shake a soda bottle to build pressure, then pop the cap for the tallest geyser before it bursts.</p>
-      <span class="best" id="bestFizz"></span>
-    </div>
-  </a>
-
-  <a class="card maze" href="tilt-maze.html">
-    <canvas id="iconMaze" width="192" height="192"></canvas>
-    <div>
-      <span class="chip">Tilt</span>
-      <h2>Tilt Maze</h2>
-      <p>Tilt a wooden labyrinth to roll a steel ball past the holes and into the goal.</p>
-      <span class="best" id="bestMaze"></span>
-    </div>
-  </a>
-
-  <footer>Works best on a phone. On iPhone, tap Allow when a game asks for motion access. On a computer, the games fall back to the mouse and keyboard.</footer>
-</main>
+<script src="assets/quiz.js"></script>
 <script>
-  // personal bests, if this phone has played before
-  try {
-    const f = parseFloat(localStorage.getItem('fizzbomb-best'));
-    if (f > 0) document.getElementById('bestFizz').textContent = 'Best geyser ' + f.toFixed(1) + ' m';
-    const m = JSON.parse(localStorage.getItem('tiltmaze-best') || '{}'), boards = Object.keys(m).length;
-    const d = JSON.parse(localStorage.getItem('dropzone') || '{}');
-    if (d.best) document.getElementById('bestDrop').textContent = 'Best ' + d.best + ' · ' + (d.gems || 0) + ' gems';
-    const pm = JSON.parse(localStorage.getItem('pourmaster') || '{}');
-    if (pm.best) document.getElementById('bestPour').textContent = 'Best ' + pm.best;
-    const wn = JSON.parse(localStorage.getItem('wardnine') || '{}');
-    if (wn.bestFloor) document.getElementById('bestWard').textContent = 'Deepest floor B' + wn.bestFloor;
-    const sl = JSON.parse(localStorage.getItem('swingline') || '{}');
-    if (sl.best) document.getElementById('bestSwing').textContent = 'Best ' + sl.best + ' m';
-    const gy = JSON.parse(localStorage.getItem('gty-stats') || '{}');
-    if (gy.played) document.getElementById('bestGty').textContent = 'Streak ' + gy.streak + ' · best ' + gy.best + '/500';
-    const ol = JSON.parse(localStorage.getItem('ol-stats') || '{}');
-    if (ol.played) document.getElementById('bestOl').textContent = 'Streak ' + ol.streak + ' · best ' + Number(ol.best).toFixed(1) + '%';
-    const bs = JSON.parse(localStorage.getItem('bs-stats') || '{}');
-    if (bs.played) document.getElementById('bestBs').textContent = 'Streak ' + bs.streak + ' · best ' + Number(bs.best).toFixed(2) + 's off';
-    const spS = JSON.parse(localStorage.getItem('sp-stats') || '{}');
-    if (spS.played) document.getElementById('bestSp').textContent = 'Streak ' + spS.streak + ' · ' + spS.played + ' played';
-    const plS = JSON.parse(localStorage.getItem('pl-stats') || '{}');
-    if (plS.played) document.getElementById('bestPl').textContent = 'Streak ' + plS.streak + ' · ' + plS.stars + ' stars';
-    if (boards) document.getElementById('bestMaze').textContent = boards + ' board' + (boards > 1 ? 's' : '') + ' cleared';
-  } catch (e) {}
+(() => {
+  // set this to your form endpoint (Formspree, Zapier, Make…) to collect waitlist emails
+  const WAITLIST_URL = '';
 
-  // small drawn icons
-  const fz = document.getElementById('iconFizz').getContext('2d'); fz.scale(2, 2);
-  fz.fillStyle = '#3b1d0f'; fz.beginPath(); fz.roundRect(30, 34, 36, 54, 8); fz.fill();
-  fz.fillStyle = '#d6b48c'; fz.fillRect(30, 34, 36, 12);
-  fz.fillStyle = '#e8402c'; fz.fillRect(30, 56, 36, 12); fz.fillRect(40, 18, 16, 8);
-  fz.strokeStyle = 'rgba(200,235,220,.6)'; fz.lineWidth = 2; fz.beginPath(); fz.moveTo(42, 26); fz.lineTo(42, 34); fz.moveTo(54, 26); fz.lineTo(54, 34); fz.stroke();
-  fz.fillStyle = '#e9dcc4'; for (let i = 0; i < 14; i++) { fz.beginPath(); fz.arc(48 + (Math.random() - .5) * 18, 14 - Math.random() * 12, 1.5 + Math.random() * 2, 0, 7); fz.fill(); }
-
-  const mz = document.getElementById('iconMaze').getContext('2d'); mz.scale(2, 2);
-  mz.fillStyle = '#c39260'; mz.fillRect(8, 8, 80, 80);
-  mz.fillStyle = '#7a5129';
-  [[8,8,80,5],[8,83,80,5],[8,8,5,80],[83,8,5,80],[28,8,5,50],[48,30,5,58],[68,8,5,55],[28,58,25,5]].forEach(r => mz.fillRect(...r));
-  mz.fillStyle = '#120a04'; mz.beginPath(); mz.arc(40, 74, 7, 0, 7); mz.fill(); mz.beginPath(); mz.arc(60, 20, 6, 0, 7); mz.fill();
-  mz.fillStyle = '#0d2a19'; mz.beginPath(); mz.arc(76, 76, 7, 0, 7); mz.fill(); mz.strokeStyle = '#3fb46c'; mz.lineWidth = 2; mz.stroke();
-  const bg = mz.createRadialGradient(17, 18, 1, 20, 21, 6); bg.addColorStop(0, '#fff'); bg.addColorStop(1, '#5c6368');
-  mz.fillStyle = bg; mz.beginPath(); mz.arc(20, 21, 6, 0, 7); mz.fill();
-
-  const dz = document.getElementById('iconDrop').getContext('2d'); dz.scale(2, 2);
-  dz.fillStyle = '#ff5a36'; for (let x = 8; x < 88; x += 10) { dz.beginPath(); dz.moveTo(x, 8); dz.lineTo(x + 5, 15); dz.lineTo(x + 10, 8); dz.fill(); }
-  dz.fillStyle = '#4d47a8'; [[8,34,44,6],[66,34,22,6],[8,58,18,6],[42,58,46,6],[8,80,52,6],[74,80,14,6]].forEach(r => { dz.beginPath(); dz.roundRect(...r, 3); dz.fill(); });
-  dz.fillStyle = 'rgba(154,163,176,.35)'; dz.beginPath(); dz.arc(59, 40, 4, 0, 7); dz.fill();
-  const db = dz.createRadialGradient(31, 47, 1, 33, 49, 6); db.addColorStop(0, '#fff'); db.addColorStop(1, '#5f6670');
-  dz.fillStyle = db; dz.beginPath(); dz.arc(33, 49, 6, 0, 7); dz.fill();
-  dz.save(); dz.translate(80, 50); dz.rotate(Math.PI / 4); dz.fillStyle = '#3ff2c4'; dz.fillRect(-3, -3, 6, 6); dz.restore();
-
-  const pc = document.getElementById('iconPour').getContext('2d'); pc.scale(2, 2);
-  pc.save(); pc.translate(34, 32); pc.rotate(1.1);
-  pc.fillStyle = 'rgba(150,210,235,.75)'; pc.fillRect(-9, -8, 18, 16);
-  pc.strokeStyle = 'rgba(220,240,240,.85)'; pc.lineWidth = 2; pc.strokeRect(-9, -14, 18, 30); pc.strokeRect(-4, -22, 8, 8);
-  pc.fillStyle = '#d9824a'; pc.fillRect(-9, 2, 18, 7); pc.restore();
-  pc.fillStyle = 'rgba(150,210,235,.9)'; for (let i = 0; i < 9; i++) { pc.beginPath(); pc.arc(56 + i * 1.2, 34 + i * 4.5, 1.6, 0, 7); pc.fill(); }
-  pc.fillStyle = 'rgba(150,210,235,.75)'; pc.fillRect(53, 74, 22, 12);
-  pc.strokeStyle = 'rgba(220,240,240,.85)'; pc.lineWidth = 2; pc.beginPath(); pc.moveTo(50, 62); pc.lineTo(53, 88); pc.lineTo(75, 88); pc.lineTo(78, 62); pc.stroke();
-  pc.setLineDash([3, 2]); pc.strokeStyle = '#7ee08f'; pc.beginPath(); pc.moveTo(51, 72); pc.lineTo(77, 72); pc.stroke(); pc.setLineDash([]);
-
-  const wc = document.getElementById('iconWard').getContext('2d'); wc.scale(2, 2);
-  wc.fillStyle = '#000'; wc.fillRect(4, 4, 88, 88);
-  wc.save(); wc.beginPath(); wc.moveTo(30, 62); wc.lineTo(92, 22); wc.lineTo(92, 70); wc.closePath(); wc.clip();
-  const wg = wc.createRadialGradient(30, 62, 4, 30, 62, 70); wg.addColorStop(0, '#5a5c50'); wg.addColorStop(1, '#151612');
-  wc.fillStyle = wg; wc.fillRect(0, 0, 96, 96);
-  wc.fillStyle = '#9fb58a'; wc.beginPath(); wc.arc(72, 42, 7, 0, 7); wc.fill();
-  wc.strokeStyle = '#9fb58a'; wc.lineWidth = 3; wc.lineCap = 'round'; wc.beginPath(); wc.moveTo(68, 36); wc.lineTo(58, 38); wc.moveTo(68, 48); wc.lineTo(58, 48); wc.stroke();
-  wc.restore();
-  wc.fillStyle = '#2e3a4a'; wc.beginPath(); wc.arc(30, 62, 7, 0, 7); wc.fill();
-  wc.fillStyle = '#d8b48f'; wc.beginPath(); wc.arc(31, 61, 4, 0, 7); wc.fill();
-  wc.fillStyle = '#5a1510'; wc.beginPath(); wc.arc(20, 80, 5, 0, 7); wc.fill();
-
-  const sc = document.getElementById('iconSwing').getContext('2d'); sc.scale(2, 2);
-  sc.fillStyle = '#251a45'; [[6,50,16,40],[24,62,14,28],[40,44,18,46],[60,58,14,32],[76,48,14,42]].forEach(r => sc.fillRect(...r));
-  sc.strokeStyle = '#ffd166'; sc.lineWidth = 2; sc.beginPath(); sc.moveTo(56, 14); sc.lineTo(36, 46); sc.stroke();
-  sc.fillStyle = '#7cf5ff'; sc.beginPath(); sc.arc(56, 14, 4, 0, 7); sc.fill();
-  sc.strokeStyle = '#ff4f6d'; sc.lineWidth = 4; sc.lineCap = 'round'; sc.beginPath(); sc.moveTo(36, 46); sc.quadraticCurveTo(26, 50, 18, 44); sc.stroke();
-  sc.fillStyle = '#f4efff'; sc.beginPath(); sc.arc(36, 46, 7, 0, 7); sc.fill();
-  sc.fillStyle = '#120d24'; sc.fillRect(35, 43, 7, 3);
-
-  const lc = document.getElementById('iconLyric').getContext('2d'); lc.scale(2, 2);
-  const lg = lc.createLinearGradient(0, 0, 30, 96); lg.addColorStop(0, '#07060d'); lg.addColorStop(1, '#1b0b2e');
-  lc.fillStyle = lg; lc.fillRect(16, 4, 64, 88);
-  lc.textAlign = 'center'; lc.font = '15px Impact, sans-serif'; lc.fillStyle = '#fff'; lc.fillText('TURN', 48, 38);
-  lc.save(); lc.translate(48, 62); lc.rotate(-.12); lc.font = '24px Impact, sans-serif';
-  lc.fillStyle = '#39e5ff'; lc.fillText('LOUD', 2, 2); lc.fillStyle = '#ff3d7f'; lc.fillText('LOUD', 0, 0); lc.restore();
-  lc.font = '12px Impact, sans-serif'; lc.fillStyle = '#fff'; lc.fillText('IT UP', 48, 80);
-
-  const gc = document.getElementById('iconGty').getContext('2d'); gc.scale(2, 2);
-  ['1','9','9','7'].forEach((d, i) => {
-    gc.fillStyle = '#0b1714'; gc.beginPath(); gc.roundRect(8 + i * 21, 26, 18, 30, 3); gc.fill();
-    gc.fillStyle = '#f6efdc'; gc.font = '900 24px Impact, sans-serif'; gc.textAlign = 'center'; gc.textBaseline = 'middle'; gc.fillText(d, 17 + i * 21, 42);
-    gc.fillStyle = 'rgba(0,0,0,.5)'; gc.fillRect(8 + i * 21, 41, 18, 1);
+  // live demo in the hero, with the Meta events it would send
+  const demo = Quizloop.fromTemplate('skincare');
+  const ping = document.getElementById('ping');
+  Quizloop.mount(document.getElementById('demo'), demo, {
+    preview: true,
+    onEvent(name) {
+      const std = Quizloop.STANDARD[name];
+      if (std) ping.innerHTML = `Sent to Meta: <b>${std}</b>`;
+      else if (name === 'quiz_start') ping.textContent = 'Every answer is tracked as you go.';
+    },
   });
-  ['#2f9e5b','#6cbf4a','#e0a526','#e57a2e','#c8402a'].forEach((c, i) => { gc.fillStyle = c; gc.beginPath(); gc.roundRect(10 + i * 16, 66, 12, 12, 2); gc.fill(); });
 
-  const oc = document.getElementById('iconOl').getContext('2d'); oc.scale(2, 2);
-  oc.fillStyle = '#fbfaf6'; oc.beginPath(); oc.roundRect(8, 8, 80, 80, 4); oc.fill();
-  oc.strokeStyle = '#e2ddd0'; oc.lineWidth = 1; for (let i = 18; i < 88; i += 10) { oc.beginPath(); oc.moveTo(i, 8); oc.lineTo(i, 88); oc.moveTo(8, i); oc.lineTo(88, i); oc.stroke(); }
-  oc.setLineDash([3, 3]); oc.strokeStyle = 'rgba(27,42,74,.4)'; oc.lineWidth = 1.5; oc.beginPath();
-  for (let i = 0; i <= 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 13 : 32; i ? oc.lineTo(48 + Math.cos(a) * r, 50 + Math.sin(a) * r) : oc.moveTo(48 + Math.cos(a) * r, 50 + Math.sin(a) * r); } oc.stroke(); oc.setLineDash([]);
-  oc.strokeStyle = '#2f9e5b'; oc.lineWidth = 3; oc.lineCap = 'round'; oc.beginPath();
-  for (let i = 0; i <= 6; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = (i % 2 ? 13 : 32) + (i % 3 - 1) * 1.5; i ? oc.lineTo(48 + Math.cos(a) * r, 50 + Math.sin(a) * r) : oc.moveTo(48 + Math.cos(a) * r, 50 + Math.sin(a) * r); } oc.stroke();
-  oc.fillStyle = '#2f9e5b'; oc.beginPath(); oc.arc(48, 18, 4, 0, 7); oc.fill();
-
-  const bc = document.getElementById('iconBs').getContext('2d'); bc.scale(2, 2);
-  bc.fillStyle = '#2c2b26'; bc.fillRect(44, 8, 8, 8);
-  bc.fillStyle = '#f8f4ea'; bc.beginPath(); bc.arc(48, 54, 36, 0, 7); bc.fill();
-  bc.strokeStyle = '#ff6b33'; bc.lineWidth = 4; bc.beginPath(); bc.arc(48, 54, 32, -Math.PI / 2, Math.PI * .9); bc.stroke();
-  bc.fillStyle = '#1c1b18'; bc.font = '700 20px "Arial Narrow", sans-serif'; bc.textAlign = 'center'; bc.textBaseline = 'middle';
-  bc.fillText('?.??', 48, 55);
-
-  const pc2 = document.getElementById('iconSp').getContext('2d'); pc2.scale(2, 2);
-  const wg2 = pc2.createRadialGradient(48, 44, 4, 48, 48, 50); wg2.addColorStop(0, '#f1e4c8'); wg2.addColorStop(1, '#3a2a1c');
-  pc2.fillStyle = wg2; pc2.fillRect(6, 6, 84, 84);
-  pc2.lineCap = 'round'; pc2.lineJoin = 'round';
-  const fig = [[30, 64], [44, 40], [60, 54], [66, 30]];
-  pc2.strokeStyle = 'rgba(255,122,60,.8)'; pc2.lineWidth = 11; pc2.beginPath(); fig.forEach(([x, y], i) => i ? pc2.lineTo(x, y) : pc2.moveTo(x, y)); pc2.stroke();
-  pc2.strokeStyle = '#e9dcc4'; pc2.lineWidth = 7; pc2.stroke();
-  pc2.strokeStyle = 'rgba(35,22,14,.85)'; pc2.lineWidth = 7; pc2.beginPath(); [[32, 66], [44, 43], [58, 58], [68, 36]].forEach(([x, y], i) => i ? pc2.lineTo(x, y) : pc2.moveTo(x, y)); pc2.stroke();
-
-  const kc = document.getElementById('iconPl').getContext('2d'); kc.scale(2, 2);
-  kc.fillStyle = '#6b4a2b'; kc.fillRect(6, 6, 84, 84); kc.fillStyle = '#1f3a30'; kc.fillRect(11, 11, 74, 74);
-  kc.strokeStyle = '#c98b54'; kc.lineWidth = 4; kc.lineCap = 'round'; kc.beginPath(); kc.moveTo(22, 36); kc.lineTo(46, 32); kc.stroke();
-  kc.strokeStyle = '#f1efe6'; kc.lineWidth = 2.5; kc.beginPath(); kc.moveTo(18, 52); kc.quadraticCurveTo(44, 70, 60, 62); kc.stroke();
-  kc.strokeStyle = '#ffe17a'; kc.lineWidth = 2.5; kc.beginPath(); kc.moveTo(60, 66); kc.lineTo(60, 78); kc.lineTo(76, 78); kc.lineTo(76, 66); kc.stroke();
-  const mg = kc.createRadialGradient(36, 22, 1, 38, 24, 5); mg.addColorStop(0, '#fff'); mg.addColorStop(1, '#2a6f9a');
-  kc.fillStyle = mg; kc.beginPath(); kc.arc(38, 24, 5, 0, 7); kc.fill();
-  kc.fillStyle = '#8fd3ff'; kc.font = '14px cursive'; kc.fillText('♪', 50, 48); kc.fillText('♫', 66, 40);
-
-  const ln = document.getElementById('iconLin').getContext('2d'); ln.scale(2, 2);
-  const lg2 = ln.createLinearGradient(0, 0, 96, 96); lg2.addColorStop(0, '#10162f'); lg2.addColorStop(1, '#2b1b4a');
-  ln.fillStyle = lg2; ln.beginPath(); ln.roundRect(10, 8, 76, 80, 8); ln.fill();
-  for (let i = 0; i < 18; i++) { ln.fillStyle = 'rgba(255,244,224,.5)'; ln.fillRect(14 + (i * 37) % 68, 12 + (i * 23) % 22, 1.5, 1.5); }
-  ln.fillStyle = '#fff4e0'; ln.font = '800 20px "Arial Black", sans-serif'; ln.textAlign = 'center'; ln.fillText('10,000', 48, 52);
-  ln.fillStyle = '#ff6f59'; ln.font = '600 9px sans-serif'; ln.fillText('DAYS ALIVE', 48, 64);
-  ln.font = '12px sans-serif'; ln.fillText('❤️ 🌕 ☀️', 48, 80);
+  document.getElementById('wlForm').addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = document.getElementById('wlEmail').value.trim(), msg = document.getElementById('wlMsg');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg.style.color = '#d33'; msg.textContent = 'Enter a valid email address.'; return; }
+    msg.style.color = '';
+    if (WAITLIST_URL) {
+      try { await fetch(WAITLIST_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ email, source: 'landing', at: new Date().toISOString() }) }); }
+      catch (err) { msg.style.color = '#d33'; msg.textContent = 'Could not reach the server. Try again in a moment.'; return; }
+    } else {
+      try { const list = JSON.parse(localStorage.getItem('ql-waitlist') || '[]'); list.push(email); localStorage.setItem('ql-waitlist', JSON.stringify(list)); } catch (err) {}
+    }
+    if (window.fbq) window.fbq('track', 'Lead');
+    msg.textContent = 'You’re on the list. We’ll email you before launch.';
+    e.target.reset();
+  });
+})();
 </script>
 </body>
 </html>

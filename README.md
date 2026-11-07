@@ -1,19 +1,31 @@
-# Pocket Arcade
+# Quizloop
 
-Pocket-sized phone games. Open `index.html` to pick a game.
+Quiz funnels built for Meta advertisers. Send ad traffic to a 60-second quiz, give each visitor a personal result with its own offer, capture the email, and report every step to the Meta Pixel.
 
-- **Life in Numbers** (`life-in-numbers.html`): an app. Enter your birthday for live life stats (heartbeats, full moons, km around the Sun), upcoming milestones, planet ages and a shareable image card. Runs entirely in the browser.
-- **Plink** (`plink.html`): daily physics + music puzzle. Draw chalk ramps to get a marble into the cup; every bounce plays a note and your solution becomes a tune.
-- **Shadow Play** (`shadow-play.html`): daily 3D puzzle. Rotate a wire sculpture until its shadow matches the outline on the wall; three named shadows a day.
-- **Blind Stop** (`blind-stop.html`): daily. Stop the clock at three exact targets; the digits vanish after one second. Emoji share card.
-- **One Line** (`one-line.html`): daily. A shape that vanishes when you touch it; trace it from memory in one stroke. One try, emoji share card.
-- **Guess the Year** (`guess-the-year.html`): daily. Five mystery years with up to three clues each; fewer clues score more. Share an emoji result card.
-- **Lyric Motion** (`lyric-motion.html`): a kinetic typography studio. Paste lyrics, pick a style, optionally load the song to sync, and record a music-clip style video.
-- **Ward Nine** (`ward-nine.html`): top-down survival horror roguelite. Flashlight, scarce ammo, keycards and an elevator to the next floor; pick an upgrade after each floor. Touch twin-stick or WASD + mouse.
-- **Swing Line** (`swing-line.html`): one-touch endless swinger. Hold to hook, release to fly; perfect releases chain into boosts.
-- **Drop Zone** (`drop-zone.html`): endless. Tilt to steer a falling ball through the gaps as the floors rise; chain drops for multipliers and collect gems to unlock balls.
-- **Pour Master** (`pour-master.html`): endless. Tilt to tip a bottle and fill each glass on the conveyor to its line; perfect pours build a streak.
-- **Fizz Bomb** (`fizz-bomb.html`): shake to build pressure in a soda bottle, then pop the cap for the tallest geyser before it bursts.
-- **Tilt Maze** (`tilt-maze.html`): tilt a wooden labyrinth to roll a steel ball past the holes into the goal.
+## What's here
 
-Motion sensors need HTTPS (GitHub Pages works). iPhone asks for motion access when you tap **Start**. On a computer, the games use the mouse and keyboard.
+| File | What it is |
+|---|---|
+| `index.html` | Landing page for ads: live demo quiz, features, pricing, waitlist |
+| `app.html` | The builder: templates, editor, live phone preview, Meta event log, publish |
+| `f.html` | The live funnel visitors take. The funnel is stored (compressed) in the link's `#` part |
+| `assets/quiz.js` | Shared engine: data model, templates, link encoding, quiz player, Pixel and webhook tracking |
+
+## Tracking
+
+| Funnel step | Meta event |
+|---|---|
+| Quiz finished | `CompleteRegistration` |
+| Email captured | `Lead` |
+| Offer button clicked | `InitiateCheckout` |
+| Every step | `Quiz_*` custom events |
+
+Leads and finished quizzes are POSTed as JSON (email, result, answers, UTM tags) to the funnel's webhook URL.
+
+## Prototype limits
+
+- Funnels are saved in the builder's browser (no accounts yet).
+- Waitlist emails are stored locally until `WAITLIST_URL` in `index.html` points at a form endpoint.
+- Next: accounts + database, Stripe subscriptions, Conversions API, analytics, AI quiz writer.
+
+The previous Pocket Arcade games are kept on the `games-archive` branch.

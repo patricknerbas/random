@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap">
+<style>
+  /* The live funnel: the quiz fills the screen, centred in a phone-width column on larger screens. */
+  html, body { margin: 0; height: 100%; }
+  body { background: #f4f3ef; font-family: "Figtree", system-ui, sans-serif; }
+  body.dark { background: #0b0c0e; }
+  #app { max-width: 520px; min-height: 100%; margin: 0 auto; display: flex; flex-direction: column; }
+  #app > .qlp { flex: 1; padding-top: max(22px, env(safe-area-inset-top, 0px)); padding-bottom: max(26px, env(safe-area-inset-bottom, 0px)); padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+  .missing { padding: 40px 24px; text-align: center; color: #555; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="assets/quiz.js"></script>
+<script>
+(async () => {
+  const app = document.getElementById('app');
+  const raw = location.hash.replace(/^#/, '');
+  let funnel = null;
+  try { if (raw) funnel = await Quizloop.decode(raw); } catch (e) { funnel = null; }
+  if (!funnel || !funnel.questions) {
+    app.innerHTML = '<div class="missing"><b>This quiz link is incomplete.</b><br>Ask whoever sent it for the full link, or copy it again from the builder.</div>';
+    return;
+  }
+  document.title = (funnel.intro && funnel.intro.title) || funnel.name || 'Quiz';
+  if (funnel.theme && funnel.theme.mode === 'dark') document.body.classList.add('dark');
+
+  const tr = funnel.tracking || {};
+  Quizloop.loadPixel(tr.pixelId);
+  const session = Quizloop.uid() + Quizloop.uid();
+  const utm = Object.fromEntries(new URLSearchParams(location.search));
+
+  Quizloop.mount(app, funnel, {
+    onEvent(name, data) {
+      Quizloop.trackLive(funnel, name, data);
+      // leads and finished quizzes go to the owner's webhook (Zapier, Make, a Google Sheet script, a CRM…)
+      if (name === 'lead' || name === 'result_view') {
+        Quizloop.sendWebhook(tr.webhook, { event: name, funnel: funnel.name, session, at: new Date().toISOString(), page: location.origin + location.pathname, utm, ...data });
+      }
+    },
+  });
+})();
+</script>
+</body>
+</html>

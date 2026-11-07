@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Quizloop Builder</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+  /* Layout: top bar; editor column on the left, sticky phone preview + live ad-event log on the right.
+     On phones the two columns become tabs. */
+  :root {
+    --bg: #f6f4ef; --panel: #ffffff; --ink: #16181d; --muted: #6b6f7a; --line: #e4e1d8; --soft: #efede6;
+    --brand: #ff4d2e; --mint: #1fb58f; --warn: #c98a12;
+    --display: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
+    --body: "Figtree", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0f1013; --panel: #17191e; --ink: #f2f1ed; --muted: #9aa0aa; --line: #2a2d34; --soft: #1e2127; --brand: #ff6247; --mint: #33d1a6; --warn: #f2bd45; color-scheme: dark; } }
+  :root[data-theme="dark"] { --bg: #0f1013; --panel: #17191e; --ink: #f2f1ed; --muted: #9aa0aa; --line: #2a2d34; --soft: #1e2127; --brand: #ff6247; --mint: #33d1a6; --warn: #f2bd45; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 14px; line-height: 1.45; }
+  .top {
+    position: sticky; top: 0; z-index: 20; background: var(--panel); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding-block: max(10px, env(safe-area-inset-top, 0px)) 10px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .logo { font-family: var(--display); font-weight: 800; font-size: 1.25rem; letter-spacing: -.03em; text-decoration: none; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+  .logo i { width: 18px; height: 18px; border-radius: 50%; border: 4px solid var(--brand); border-right-color: transparent; display: inline-block; transform: rotate(-30deg); }
+  .top select { max-width: 220px; }
+  .spacer { flex: 1; }
+  button, .btn { font: 600 .88rem var(--body); color: var(--ink); background: var(--soft); border: 1px solid var(--line); border-radius: 10px; padding: 9px 13px; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+  button:hover { border-color: var(--muted); }
+  button.primary { background: var(--brand); border-color: var(--brand); color: #fff; }
+  button.ghost { background: transparent; }
+  button.danger { color: #d33; }
+  button.icon { padding: 6px 9px; }
+  button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  input, select, textarea { font: 500 .92rem var(--body); color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 9px 11px; width: 100%; min-width: 0; }
+  textarea { resize: vertical; min-height: 64px; line-height: 1.45; }
+  input[type=color] { padding: 2px; height: 38px; width: 56px; }
+  input[type=checkbox] { width: auto; accent-color: var(--brand); }
+  .tabs { display: none; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 20px; max-width: 1240px; margin: 0 auto; padding: 18px max(16px, env(safe-area-inset-right, 0px)) 60px max(16px, env(safe-area-inset-left, 0px)); align-items: start; }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: minmax(0, 1fr); }
+    .tabs { display: flex; gap: 6px; width: 100%; }
+    .tabs button { flex: 1; justify-content: center; }
+    .tabs button[aria-pressed="true"] { background: var(--ink); color: var(--panel); border-color: var(--ink); }
+    body[data-tab="edit"] .preview-col { display: none; }
+    body[data-tab="preview"] .editor { display: none; }
+  }
+  .editor { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  details.sec { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+  details.sec > summary { list-style: none; cursor: pointer; padding: 14px 16px; display: flex; align-items: center; gap: 10px; font-family: var(--display); font-weight: 700; font-size: 1.05rem; }
+  details.sec > summary::-webkit-details-marker { display: none; }
+  details.sec > summary small { font-family: var(--body); font-weight: 500; font-size: .8rem; color: var(--muted); margin-left: auto; }
+  details.sec > summary::before { content: "▸"; color: var(--muted); transition: transform .15s; }
+  details.sec[open] > summary::before { transform: rotate(90deg); }
+  .sec-body { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 12px; }
+  .row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 520px) { .row2 { grid-template-columns: minmax(0, 1fr); } }
+  label.f { display: flex; flex-direction: column; gap: 5px; font-size: .76rem; font-weight: 600; color: var(--muted); min-width: 0; }
+  label.chk { flex-direction: row; align-items: center; gap: 8px; font-size: .88rem; color: var(--ink); }
+  .item { border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: flex; flex-direction: column; gap: 10px; background: var(--bg); }
+  .item-head { display: flex; align-items: center; gap: 6px; }
+  .item-head b { font-family: var(--display); font-size: .95rem; flex: 1; min-width: 0; }
+  .pill { font: 600 .7rem var(--mono); padding: 2px 7px; border-radius: 999px; background: var(--soft); border: 1px solid var(--line); color: var(--muted); }
+  .ans { display: grid; grid-template-columns: 22px minmax(0, 1fr) minmax(0, 150px) auto; gap: 8px; align-items: center; }
+  .ans span { font: 600 .78rem var(--mono); color: var(--muted); text-align: center; }
+  @media (max-width: 520px) { .ans { grid-template-columns: 22px minmax(0, 1fr) auto; } .ans select { grid-column: 2 / 3; } }
+  .hint { margin: 0; font-size: .8rem; color: var(--muted); line-height: 1.5; }
+  .hint code, .map code { font-family: var(--mono); font-size: .76rem; }
+  .map { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  .map td { padding: 6px 4px; border-bottom: 1px dashed var(--line); }
+  .map td:last-child { text-align: right; }
+  .preview-col { position: sticky; top: 76px; display: flex; flex-direction: column; gap: 12px; }
+  .phone { width: 100%; max-width: 390px; margin: 0 auto; aspect-ratio: 9 / 17.5; max-height: calc(100vh - 290px); min-height: 520px; border-radius: 36px; border: 10px solid #111; background: #111; overflow: hidden; box-shadow: 0 30px 60px -30px rgba(0,0,0,.5); }
+  .phone-screen { width: 100%; height: 100%; overflow-y: auto; border-radius: 26px; }
+  .phone-screen > .qlp { min-height: 100%; }
+  .events { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+  .events h3 { margin: 0 0 8px; font: 700 .78rem var(--body); text-transform: uppercase; letter-spacing: .1em; color: var(--muted); display: flex; justify-content: space-between; }
+  .log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 140px; overflow-y: auto; font: 500 .78rem var(--mono); }
+  .log li { display: flex; gap: 8px; align-items: baseline; }
+  .log li em { font-style: normal; color: var(--mint); }
+  .log li.std em { color: var(--brand); }
+  .log .empty { color: var(--muted); font-family: var(--body); }
+  dialog { border: 1px solid var(--line); border-radius: 18px; padding: 0; background: var(--panel); color: var(--ink); width: min(560px, calc(100% - 32px)); }
+  dialog::backdrop { background: rgba(10,10,14,.55); }
+  .dlg { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .dlg h2 { margin: 0; font-family: var(--display); font-size: 1.4rem; }
+  .tpls { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 480px) { .tpls { grid-template-columns: minmax(0, 1fr); } }
+  .tpl { text-align: left; flex-direction: column; align-items: flex-start; gap: 4px; padding: 14px; border-radius: 12px; background: var(--bg); }
+  .tpl b { font-family: var(--display); font-size: 1rem; }
+  .tpl span { font-weight: 500; font-size: .8rem; color: var(--muted); }
+  .linkbox { display: flex; gap: 8px; }
+  .linkbox input { font-family: var(--mono); font-size: .78rem; }
+  .toast { position: fixed; left: 50%; bottom: calc(24px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--panel); padding: 10px 16px; border-radius: 999px; font-weight: 600; z-index: 50; }
+</style>
+</head>
+<body data-tab="edit">
+<header class="top">
+  <a class="logo" href="index.html"><i aria-hidden="true"></i>Quizloop</a>
+  <select id="pick" aria-label="Your funnels"></select>
+  <button id="newBtn" type="button">＋ New funnel</button>
+  <span class="spacer"></span>
+  <button class="primary" id="pubBtn" type="button">Publish</button>
+  <div class="tabs" role="group" aria-label="View">
+    <button type="button" data-tab="edit" aria-pressed="true">Edit</button>
+    <button type="button" data-tab="preview" aria-pressed="false">Preview</button>
+  </div>
+</header>
+
+<div class="layout">
+  <main class="editor" id="editor"></main>
+  <aside class="preview-col">
+    <div class="phone"><div class="phone-screen" id="screen"></div></div>
+    <div class="events">
+      <h3><span>Events your ads will get</span><button class="ghost icon" id="clearLog" type="button" title="Clear">Clear</button></h3>
+      <ul class="log" id="log"><li class="empty">Click through the preview. Each step shows the event sent to Meta.</li></ul>
+    </div>
+  </aside>
+</div>
+
+<dialog id="newDlg">
+  <div class="dlg">
+    <h2>Start a new funnel</h2>
+    <div class="tpls" id="tpls"></div>
+    <div><button class="ghost" type="button" onclick="this.closest('dialog').close()">Cancel</button></div>
+  </div>
+</dialog>
+
+<dialog id="pubDlg">
+  <div class="dlg">
+    <h2>Your funnel is live</h2>
+    <p class="hint">Use this link as the website URL in your Meta ad. The whole funnel is stored inside the link, so publish again after you make changes.</p>
+    <label class="f">Funnel link
+      <span class="linkbox"><input id="pubLink" readonly><button type="button" id="copyLink">Copy</button></span>
+    </label>
+    <label class="f">Embed on your website
+      <span class="linkbox"><input id="embedCode" readonly><button type="button" id="copyEmbed">Copy</button></span>
+    </label>
+    <p class="hint" id="pubTracking"></p>
+    <div style="display:flex;gap:8px"><a class="btn" id="openLink" target="_blank" rel="noopener">Open funnel ↗</a><button class="ghost" type="button" onclick="this.closest('dialog').close()">Done</button></div>
+  </div>
+</dialog>
+<div class="toast" id="toast" hidden></div>
+
+<script src="assets/quiz.js"></script>
+<script>
+(() => {
+  const $ = id => document.getElementById(id);
+  const Q = window.Quizloop;
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // ---------- storage (this browser for now; accounts and cloud sync come with the backend) ----------
+  const load = () => { try { return JSON.parse(localStorage.getItem('ql-funnels') || '[]'); } catch (e) { return []; } };
+  let funnels = load(), cur = null;
+  const save = () => { cur.updated = Date.now(); try { localStorage.setItem('ql-funnels', JSON.stringify(funnels)); localStorage.setItem('ql-current', cur.id); } catch (e) {} };
+  if (!funnels.length) funnels = [Q.fromTemplate('skincare')];
+  cur = funnels.find(f => f.id === (localStorage.getItem('ql-current') || '')) || funnels[0];
+
+  function refreshPicker() {
+    $('pick').innerHTML = funnels.map(f => `<option value="${f.id}"${f === cur ? ' selected' : ''}>${esc(f.name || 'Untitled')}</option>`).join('');
+  }
+  $('pick').addEventListener('change', e => { cur = funnels.find(f => f.id === e.target.value); save(); renderAll(); });
+
+  // ---------- path binding: inputs carry data-p="questions.0.answers.1.text" ----------
+  function setPath(path, value) {
+    const keys = path.split('.'); let o = cur;
+    for (let i = 0; i < keys.length - 1; i++) o = o[keys[i]];
+    o[keys[keys.length - 1]] = value;
+  }
+  const field = (label, path, value, opts = {}) => {
+    const v = esc(value);
+    const input = opts.area ? `<textarea data-p="${path}" rows="${opts.rows || 2}" placeholder="${esc(opts.ph || '')}">${v}</textarea>`
+      : `<input data-p="${path}" value="${v}" placeholder="${esc(opts.ph || '')}"${opts.type ? ` type="${opts.type}"` : ''}${opts.mode ? ` inputmode="${opts.mode}"` : ''}>`;
+    return `<label class="f">${label}${input}</label>`;
+  };
+
+  function renderEditor() {
+    const f = cur, outs = f.outcomes;
+    const outOptions = sel => `<option value="">No result</option>` + outs.map((o, i) => `<option value="${o.id}"${o.id === sel ? ' selected' : ''}>→ ${esc(o.title || 'Result ' + (i + 1))}</option>`).join('');
+    const openState = id => (renderEditor.open || {})[id] !== false ? ' open' : '';
+    $('editor').innerHTML = `
+      <details class="sec" data-id="basics"${openState('basics')}><summary>Funnel <small>name &amp; look</small></summary><div class="sec-body">
+        ${field('Funnel name (only you see this)', 'name', f.name)}
+        <div class="row2">
+          <label class="f">Brand colour<input type="color" data-p="theme.accent" value="${esc(f.theme.accent)}"></label>
+          <label class="f">Style<select data-p="theme.mode"><option value="light"${f.theme.mode !== 'dark' ? ' selected' : ''}>Light</option><option value="dark"${f.theme.mode === 'dark' ? ' selected' : ''}>Dark</option></select></label>
+        </div>
+        <div><button class="danger ghost" type="button" data-act="del-funnel">Delete this funnel</button></div>
+      </div></details>
+
+      <details class="sec" data-id="intro"${openState('intro')}><summary>Start screen <small>the hook from your ad</small></summary><div class="sec-body">
+        ${field('Small label', 'intro.kicker', f.intro.kicker, { ph: 'e.g. 60-second quiz' })}
+        ${field('Headline', 'intro.title', f.intro.title, { area: true })}
+        ${field('Subheadline', 'intro.subtitle', f.intro.subtitle, { area: true })}
+        ${field('Button', 'intro.button', f.intro.button)}
+      </div></details>
+
+      <details class="sec" data-id="results"${openState('results')}><summary>Results <small>${outs.length} result${outs.length === 1 ? '' : 's'} · each with an offer</small></summary><div class="sec-body">
+        <p class="hint">Each answer points to a result. The result with the most matching answers wins, and its offer is shown.</p>
+        ${outs.map((o, i) => `<div class="item">
+          <div class="item-head"><span class="pill">R${i + 1}</span><b>${esc(o.title || 'Untitled result')}</b>${outs.length > 1 ? `<button class="ghost icon danger" type="button" data-act="del-out" data-i="${i}" aria-label="Delete result">✕</button>` : ''}</div>
+          ${field('Result title', `outcomes.${i}.title`, o.title)}
+          ${field('Description', `outcomes.${i}.description`, o.description, { area: true, rows: 3 })}
+          <div class="row2">${field('Button text', `outcomes.${i}.ctaText`, o.ctaText)}${field('Price shown', `outcomes.${i}.price`, o.price, { ph: 'e.g. $29' })}</div>
+          ${field('Button link (product page, Stripe payment link, booking page…)', `outcomes.${i}.ctaUrl`, o.ctaUrl, { type: 'url', ph: 'https://' })}
+        </div>`).join('')}
+        <div><button type="button" data-act="add-out">＋ Add result</button></div>
+      </div></details>
+
+      <details class="sec" data-id="questions"${openState('questions')}><summary>Questions <small>${f.questions.length} question${f.questions.length === 1 ? '' : 's'}</small></summary><div class="sec-body">
+        ${f.questions.map((q, i) => `<div class="item">
+          <div class="item-head"><span class="pill">Q${i + 1}</span><b>${esc(q.text || 'Untitled question')}</b>
+            <button class="ghost icon" type="button" data-act="up-q" data-i="${i}" aria-label="Move up"${i === 0 ? ' disabled' : ''}>↑</button>
+            <button class="ghost icon" type="button" data-act="down-q" data-i="${i}" aria-label="Move down"${i === f.questions.length - 1 ? ' disabled' : ''}>↓</button>
+            <button class="ghost icon danger" type="button" data-act="del-q" data-i="${i}" aria-label="Delete question">✕</button></div>
+          ${field('Question', `questions.${i}.text`, q.text, { area: true })}
+          ${q.answers.map((a, j) => `<div class="ans"><span>${String.fromCharCode(65 + j)}</span>
+            <input data-p="questions.${i}.answers.${j}.text" value="${esc(a.text)}" aria-label="Answer ${String.fromCharCode(65 + j)}">
+            <select data-p="questions.${i}.answers.${j}.outcome" aria-label="Result for answer ${String.fromCharCode(65 + j)}">${outOptions(a.outcome)}</select>
+            <button class="ghost icon danger" type="button" data-act="del-a" data-i="${i}" data-j="${j}" aria-label="Delete answer"${q.answers.length <= 2 ? ' disabled' : ''}>✕</button></div>`).join('')}
+          ${q.answers.length < 6 ? `<div><button class="ghost" type="button" data-act="add-a" data-i="${i}">＋ Answer</button></div>` : ''}
+        </div>`).join('')}
+        <div><button type="button" data-act="add-q">＋ Add question</button></div>
+      </div></details>
+
+      <details class="sec" data-id="capture"${openState('capture')}><summary>Lead capture <small>${f.capture.enabled ? 'on' : 'off'}</small></summary><div class="sec-body">
+        <label class="f chk"><input type="checkbox" data-p="capture.enabled"${f.capture.enabled ? ' checked' : ''}> Ask for an email before the result</label>
+        <label class="f chk"><input type="checkbox" data-p="capture.required"${f.capture.required ? ' checked' : ''}> Email is required (no skip button)</label>
+        ${field('Title', 'capture.title', f.capture.title)}
+        ${field('Subtitle', 'capture.subtitle', f.capture.subtitle)}
+        ${field('Button', 'capture.button', f.capture.button)}
+      </div></details>
+
+      <details class="sec" data-id="tracking"${openState('tracking')}><summary>Meta tracking &amp; leads <small>${f.tracking.pixelId ? 'Pixel connected' : 'not connected'}</small></summary><div class="sec-body">
+        ${field('Meta Pixel ID', 'tracking.pixelId', f.tracking.pixelId, { ph: 'e.g. 123456789012345', mode: 'numeric' })}
+        <p class="hint">Find it in Meta Events Manager → Data sources. Every funnel step is sent to your Pixel, so your ads can optimise for real leads and checkouts instead of clicks:</p>
+        <table class="map"><tbody>
+          <tr><td>Quiz finished</td><td><code>CompleteRegistration</code></td></tr>
+          <tr><td>Email captured</td><td><code>Lead</code></td></tr>
+          <tr><td>Offer button clicked</td><td><code>InitiateCheckout</code></td></tr>
+          <tr><td>Every step</td><td><code>Quiz_*</code> custom events</td></tr>
+        </tbody></table>
+        ${field('Send leads to a webhook (Zapier, Make, your CRM)', 'tracking.webhook', f.tracking.webhook, { type: 'url', ph: 'https://hooks.zapier.com/…' })}
+        <p class="hint">Each lead and finished quiz is POSTed as JSON with the email, result, answers and the visitor’s UTM tags.</p>
+      </div></details>`;
+  }
+  $('editor').addEventListener('toggle', e => { if (e.target.matches('details.sec')) (renderEditor.open ||= {})[e.target.dataset.id] = e.target.open; }, true);
+
+  // edits: update data, refresh preview (editor stays put so typing keeps focus)
+  let previewTimer;
+  $('editor').addEventListener('input', e => {
+    const p = e.target.dataset.p; if (!p) return;
+    let v = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    if (p === 'tracking.pixelId') v = v.replace(/\D/g, '');
+    setPath(p, v); save();
+    if (p === 'name') refreshPicker();
+    clearTimeout(previewTimer); previewTimer = setTimeout(renderPreview, 250);
+  });
+  $('editor').addEventListener('change', e => { const p = e.target.dataset.p || ''; if (/outcome|title|enabled/.test(p)) { renderEditor(); } });
+
+  // structural actions
+  $('editor').addEventListener('click', e => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const i = +b.dataset.i, j = +b.dataset.j, f = cur;
+    switch (b.dataset.act) {
+      case 'add-out': f.outcomes.push({ id: Q.uid(), title: 'New result', description: '', price: '', ctaText: 'See the offer', ctaUrl: '' }); break;
+      case 'del-out': { const id = f.outcomes[i].id; f.outcomes.splice(i, 1); f.questions.forEach(q => q.answers.forEach(a => { if (a.outcome === id) a.outcome = ''; })); break; }
+      case 'add-q': f.questions.push({ id: Q.uid(), text: 'New question', answers: f.outcomes.slice(0, 3).map((o, k) => ({ id: Q.uid(), text: 'Answer ' + String.fromCharCode(65 + k), outcome: o.id })) }); break;
+      case 'del-q': if (f.questions.length > 1 || confirmLast()) f.questions.splice(i, 1); break;
+      case 'up-q': [f.questions[i - 1], f.questions[i]] = [f.questions[i], f.questions[i - 1]]; break;
+      case 'down-q': [f.questions[i + 1], f.questions[i]] = [f.questions[i], f.questions[i + 1]]; break;
+      case 'add-a': f.questions[i].answers.push({ id: Q.uid(), text: '', outcome: '' }); break;
+      case 'del-a': f.questions[i].answers.splice(j, 1); break;
+      case 'del-funnel': return deleteFunnel(b);
+    }
+    save(); renderEditor(); renderPreview();
+  });
+  const confirmLast = () => { toast('A funnel needs at least one question.'); return false; };
+  function deleteFunnel(btn) {
+    // two-step confirm inside the page
+    if (btn.dataset.armed !== '1') { btn.dataset.armed = '1'; btn.textContent = 'Click again to delete for good'; setTimeout(() => { btn.dataset.armed = ''; btn.textContent = 'Delete this funnel'; }, 3000); return; }
+    funnels = funnels.filter(x => x !== cur);
+    if (!funnels.length) funnels.push(Q.fromTemplate('saas'));
+    cur = funnels[0]; save(); renderAll(); toast('Funnel deleted.');
+  }
+
+  // ---------- preview + ad event log ----------
+  function renderPreview() {
+    Q.mount($('screen'), cur, { preview: true, badge: true, onEvent: logEvent });
+  }
+  function logEvent(name, data) {
+    const ul = $('log'); const empty = ul.querySelector('.empty'); if (empty) empty.remove();
+    const std = Q.STANDARD[name];
+    const li = document.createElement('li'); if (std) li.className = 'std';
+    const detail = data && (data.result || data.answer || data.email) ? ` · ${data.email || data.result || data.answer}` : '';
+    li.innerHTML = `<em>${std ? 'Meta ' + std : 'Quiz_' + name}</em><span></span>`;
+    li.querySelector('span').textContent = detail.slice(0, 60);
+    ul.prepend(li);
+  }
+  $('clearLog').addEventListener('click', () => { $('log').innerHTML = '<li class="empty">Click through the preview. Each step shows the event sent to Meta.</li>'; });
+
+  // ---------- new funnel ----------
+  $('tpls').innerHTML = Object.entries(Q.TEMPLATES).map(([k, t]) => `<button class="tpl" type="button" data-tpl="${k}"><b>${esc(t.label)}</b><span>${esc(t.blurb)}</span></button>`).join('')
+    + `<button class="tpl" type="button" data-tpl=""><b>Blank funnel</b><span>Start from a simple 3-question layout.</span></button>`;
+  $('newBtn').addEventListener('click', () => $('newDlg').showModal());
+  $('tpls').addEventListener('click', e => {
+    const b = e.target.closest('[data-tpl]'); if (!b) return;
+    const f = b.dataset.tpl ? Q.fromTemplate(b.dataset.tpl) : Q.blankFunnel();
+    funnels.unshift(f); cur = f; save(); $('newDlg').close(); renderAll(); toast('Funnel created. Edit it on the left.');
+  });
+
+  // ---------- publish ----------
+  $('pubBtn').addEventListener('click', async () => {
+    const code = await Q.encode(cur);
+    const base = new URL('f.html', location.href).href;
+    const link = base + '#' + code;
+    $('pubLink').value = link; $('openLink').href = link;
+    $('embedCode').value = `<iframe src="${link}" style="width:100%;max-width:520px;height:720px;border:0" title="${esc(cur.intro.title || cur.name)}"></iframe>`;
+    $('pubTracking').textContent = cur.tracking.pixelId ? `Meta Pixel ${cur.tracking.pixelId} will receive every step.` : 'Tip: add your Meta Pixel ID under “Meta tracking” so your ads can optimise for leads.';
+    $('pubDlg').showModal();
+  });
+  const copy = async (id, label) => { const v = $(id).value; try { await navigator.clipboard.writeText(v); toast(label + ' copied.'); } catch (e) { $(id).select(); document.execCommand && document.execCommand('copy'); toast(label + ' copied.'); } };
+  $('copyLink').addEventListener('click', () => copy('pubLink', 'Link'));
+  $('copyEmbed').addEventListener('click', () => copy('embedCode', 'Embed code'));
+
+  // ---------- mobile tabs ----------
+  document.querySelectorAll('.tabs button').forEach(b => b.addEventListener('click', () => {
+    document.body.dataset.tab = b.dataset.tab;
+    document.querySelectorAll('.tabs button').forEach(x => x.setAttribute('aria-pressed', x === b));
+    window.scrollTo(0, 0);
+  }));
+
+  function toast(t) { const el = $('toast'); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => el.hidden = true, 2200); }
+  function renderAll() { refreshPicker(); renderEditor(); renderPreview(); }
+  save(); renderAll();
+})();
+</script>
+</body>
+</html>
